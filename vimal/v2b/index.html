@@ -170,6 +170,29 @@ td.cum { color: var(--muted); }
 .views button { border: 0; border-radius: 0; padding: 8px 18px; background: var(--surface); font-weight: 500; }
 .views button + button { border-left: 1px solid var(--line); }
 .views button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+/* Accounts (Manual page) */
+.acards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.acard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.acard .ahead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acard .aname { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; }
+.atype { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--line); color: var(--ink); }
+.atype.Evaluation { background: var(--flat-bg); color: var(--flat); }
+.atype.Funded { background: var(--profit-bg); color: var(--profit); }
+.atype.Live { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.aconn { margin-left: auto; font-size: 0.78rem; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+.aconn i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.aconn.on i { background: var(--profit); }
+.abal { font-family: var(--font-data); font-size: 1.7rem; font-weight: 500; }
+.ameter { display: flex; flex-direction: column; gap: 5px; }
+.ameter .lbl { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; color: var(--muted); flex-wrap: wrap; }
+.ameter .lbl b { color: var(--ink); font-family: var(--font-data); font-weight: 500; }
+.ameter .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.ameter .bar span { display: block; height: 100%; border-radius: 4px; }
+.astats { width: 100%; font-size: 0.82rem; }
+.astats td, .astats th { padding: 5px 6px; }
+.acard .abtn { align-self: flex-start; }
+#acctSum tr.click { cursor: pointer; }
+#acctSum tr.click:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .loghead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .check { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
 .log { list-style: none; margin: 0; padding: 0; font-family: var(--font-data); font-size: 0.84rem; font-variant-numeric: tabular-nums; }
@@ -264,6 +287,7 @@ html.locked #gate { display: flex; min-height: 70vh; align-items: center; justif
   <div class="views" role="tablist" aria-label="View">
     <button type="button" role="tab" id="tabTrades" aria-selected="true" aria-controls="tradesView">Trades</button>
     <button type="button" role="tab" id="tabLogs" aria-selected="false" aria-controls="logsView">Logs</button>
+    <button type="button" role="tab" id="tabAccounts" aria-selected="false" aria-controls="accountsView" hidden>Accounts</button>
   </div>
 
   <div id="tradesView" class="wrap" style="gap: 20px;">
@@ -280,6 +304,10 @@ html.locked #gate { display: flex; min-height: 70vh; align-items: center; justif
     </section>
   </div>
 
+  <section class="panel" id="acctSumPanel" hidden>
+    <h2 id="acctSumTitle">Accounts</h2>
+    <div class="scroll"><table id="acctSum"></table></div>
+  </section>
   <section class="panel">
     <h2 id="tradesTitle">Trades</h2>
     <div class="scroll"><table id="trades"></table></div>
@@ -307,6 +335,10 @@ html.locked #gate { display: flex; min-height: 70vh; align-items: center; justif
     </div>
     <div class="note" id="logStatus">Loading…</div>
     <ol class="log" id="log" aria-live="polite"></ol>
+  </section>
+
+  <section id="accountsView" hidden>
+    <div class="acards" id="acards"><p class="note">Loading…</p></div>
   </section>
 
   <p class="note" id="footnote"></p>
@@ -350,6 +382,113 @@ try { if (IS_MANUAL) ACCT = localStorage.getItem("v2b-manual-account") || ""; } 
 const knownAccounts = new Set();
 const byAcct = (trades) => (ACCT ? (trades || []).filter((t) => (t.account || "") === ACCT) : (trades || []));
 function noteAccounts(trades) { (trades || []).forEach((t) => { if (t.account) knownAccounts.add(t.account); }); }
+// ---- Accounts tab (Manual page) ---------------------------------------------------
+// <trader>/manual/data/accounts.json comes from the TradeTracker indicator in NinjaTrader:
+// balance, net liquidation and NinjaTrader's trailing-drawdown figure for each account, with the
+// details typed into TradeTracker (prop firm, last digits, type, starting balance, profit target,
+// max trailing drawdown).
+let ACCOUNTS = null;   // { updated, accounts: [...] }
+async function loadAccounts() {
+  if (!IS_MANUAL) return;
+  if (sampleMode) { ACCOUNTS = sampleAccounts(); return; }
+  try { const t = await readRepoFile(`${traderPath()}/data/accounts.json`); ACCOUNTS = t ? JSON.parse(t) : { accounts: [] }; }
+  catch { /* keep what is on screen */ }
+}
+function sampleAccounts() {
+  return { updated: `${todayStr()} 21:00:00`, accounts: [
+    { key: "Apex 007", firm: "Apex", ends: "007", type: "Funded", connected: true, start_balance: 150000, profit_target: 3000, max_trailing_dd: 5000, net_liq: 151842.5, cash: 151842.5, nt_trailing_dd: 3686, peak_balance: 152156.5 },
+    { key: "Apex 012", firm: "Apex", ends: "012", type: "Evaluation", connected: true, start_balance: 50000, profit_target: 3000, max_trailing_dd: 2500, net_liq: 51240, cash: 51240, nt_trailing_dd: null, peak_balance: 51610 } ] };
+}
+const acctInfo = (key) => ((ACCOUNTS && ACCOUNTS.accounts) || []).find((a) => a.key === key) || null;
+const typePill = (a) => (a && a.type ? `<span class="atype ${esc(a.type)}">${esc(a.type)}</span>` : "");
+// Room left before the trailing drawdown limit: NinjaTrader's own figure when it gives one,
+// otherwise balance - (highest balance seen - max trailing drawdown).
+function ddRoom(a) {
+  const bal = num(a.net_liq) ?? num(a.cash);
+  if (num(a.nt_trailing_dd) !== null) return { room: num(a.nt_trailing_dd), src: "NinjaTrader" };
+  if (bal !== null && num(a.max_trailing_dd) !== null && num(a.peak_balance) !== null)
+    return { room: bal - (num(a.peak_balance) - num(a.max_trailing_dd)), src: "calculated" };
+  return null;
+}
+function num(v) { return v === null || v === undefined || v === "" || !isFinite(Number(v)) ? null : Number(v); }
+function acctTotals(key, from, to) {
+  const t = { n: 0, pnl: 0, w: 0, l: 0, be: 0 };
+  days.forEach((d) => {
+    if ((from && d.date < from) || (to && d.date > to)) return;
+    const a = d.accounts && d.accounts[key]; if (!a) return;
+    t.n += a.trades || 0; t.pnl += Number(a.pnl) || 0; t.w += a.wins || 0; t.l += a.losses || 0; t.be += a.be || 0;
+  });
+  return t;
+}
+function renderAccounts() {
+  if (!IS_MANUAL) return;
+  const list = ((ACCOUNTS && ACCOUNTS.accounts) || []).slice();
+  // Accounts that have trades but are not in accounts.json yet.
+  days.forEach((d) => Object.keys(d.accounts || {}).forEach((k) => { if (!list.some((a) => a.key === k)) list.push({ key: k }); }));
+  if (!list.length) {
+    $("acards").innerHTML = `<p class="note">No accounts yet. Add the TradeTracker indicator to a chart in NinjaTrader and fill in your accounts there; they appear here within a minute.</p>`;
+    return;
+  }
+  const today = todayStr(), month = today.slice(0, 7);
+  const row = (lab, t) => `<tr><td>${lab}</td><td class="r num">${t.n}</td><td class="r num">${t.w}W ${t.l}L ${t.be}BE</td>
+    <td class="r num">${t.w + t.l ? Math.round((t.w / (t.w + t.l)) * 100) + "%" : "–"}</td><td class="r num ${cls(t.pnl)}">${money(t.pnl)}</td></tr>`;
+  $("acards").innerHTML = list.map((a) => {
+    const bal = num(a.net_liq) ?? num(a.cash), start = num(a.start_balance), target = num(a.profit_target), maxdd = num(a.max_trailing_dd);
+    const profit = bal !== null && start !== null ? bal - start : null;
+    let tgt = "";
+    if (target !== null && profit !== null) {
+      const pct = Math.max(0, Math.min(1, profit / target)), left = Math.max(0, target - profit);
+      tgt = `<div class="ameter"><div class="lbl"><span>${a.type === "Evaluation" ? "Profit to pass" : "Profit for payout"}</span>
+        <span><b>${money(profit)}</b> of ${money(target, 0).replace("+", "")} · ${left > 0 ? money(left).replace("+", "") + " to go" : "reached"}</span></div>
+        <div class="bar"><span style="width:${pct * 100}%;background:var(--profit)"></span></div></div>`;
+    }
+    let dd = "";
+    const r = ddRoom(a);
+    if (r) {
+      const of = maxdd !== null ? maxdd : null, pct = of ? Math.max(0, Math.min(1, r.room / of)) : null;
+      const col = pct !== null && pct < 0.25 ? "var(--loss)" : pct !== null && pct < 0.5 ? "var(--flat)" : "var(--accent)";
+      dd = `<div class="ameter"><div class="lbl"><span>Room to drawdown limit${r.src === "calculated" ? " (calculated)" : ""}</span>
+        <span><b>${money(r.room, 0).replace("+", "")}</b>${of ? ` of ${money(of, 0).replace("+", "")}` : ""}${bal !== null ? ` · limit at ${money(bal - r.room, 0).replace("+", "")}` : ""}</span></div>
+        ${pct !== null ? `<div class="bar"><span style="width:${pct * 100}%;background:${col}"></span></div>` : ""}</div>`;
+    }
+    return `<article class="acard">
+      <div class="ahead"><span class="aname">${esc(a.key)}</span>${typePill(a)}
+        ${a.connected === undefined ? "" : `<span class="aconn${a.connected ? " on" : ""}"><i></i>${a.connected ? "Connected" : "Not connected"}</span>`}</div>
+      <div><div class="abal">${bal !== null ? money(bal).replace("+", "") : "–"}</div>
+        <div class="note">${start !== null ? `Started at ${money(start, 0).replace("+", "")}${profit !== null ? ` · <span class="${cls(profit)}">${money(profit)}</span>` : ""}` : "Balance"}${a.nt_name ? ` · ${esc(a.nt_name)}` : ""}</div></div>
+      ${tgt}${dd}
+      <table class="astats"><thead><tr><th></th><th class="r">Trades</th><th class="r">Results</th><th class="r">Win %</th><th class="r">P&amp;L</th></tr></thead>
+        <tbody>${row("Today", acctTotals(a.key, today, today))}${row("This month", acctTotals(a.key, month + "-01", month + "-31"))}${row("All time", acctTotals(a.key))}</tbody></table>
+      <button type="button" class="small abtn" data-acct="${esc(a.key)}">Show this account's trades</button>
+    </article>`;
+  }).join("") + (ACCOUNTS && ACCOUNTS.updated ? `<p class="note">Balances updated ${esc(ACCOUNTS.updated.slice(11, 16))} on ${fmtDay(ACCOUNTS.updated.slice(0, 10))}.</p>` : "");
+  $("acards").querySelectorAll("button[data-acct]").forEach((b) => b.addEventListener("click", () => {
+    ACCT = b.dataset.acct; try { localStorage.setItem("v2b-manual-account", ACCT); } catch {}
+    setView("trades"); render(false); window.scrollTo({ top: 0, behavior: "smooth" });
+  }));
+}
+// Trades tab: one row per account for the day on screen.
+function renderAcctSummary(all) {
+  if (!IS_MANUAL) return;
+  const by = {};
+  all.forEach((t) => { const k = t.account || "–"; const b = (by[k] = by[k] || { n: 0, w: 0, l: 0, be: 0, pnl: 0 }); b.n++; b.pnl += Number(t.pnl) || 0;
+    if (t.result === "TP") b.w++; else if (t.result === "SL") b.l++; else b.be++; });
+  const keys = Object.keys(by).sort();
+  $("acctSumPanel").hidden = !keys.length;
+  if (!keys.length) return;
+  $("acctSumTitle").textContent = `Accounts · ${fmtDay(selected)}`;
+  const tot = keys.reduce((a, k) => a + by[k].pnl, 0);
+  $("acctSum").innerHTML = `<thead><tr><th>Account</th><th>Type</th><th class="r">Trades</th><th class="r">Results</th><th class="r">Win %</th><th class="r">Balance</th><th class="r">P&amp;L</th></tr></thead><tbody>` +
+    keys.map((k) => { const b = by[k], a = acctInfo(k), bal = a ? (num(a.net_liq) ?? num(a.cash)) : null;
+      return `<tr class="click" data-acct="${esc(k)}" title="Show only this account"><td><b>${esc(k)}</b>${ACCT === k ? " ✓" : ""}</td><td>${typePill(a) || "–"}</td><td class="r num">${b.n}</td>
+        <td class="r num">${b.w}W ${b.l}L ${b.be}BE</td><td class="r num">${b.w + b.l ? Math.round((b.w / (b.w + b.l)) * 100) + "%" : "–"}</td>
+        <td class="r num">${bal !== null ? money(bal, 0).replace("+", "") : "–"}</td><td class="r num ${cls(b.pnl)}">${money(b.pnl)}</td></tr>`; }).join("") +
+    (keys.length > 1 ? `<tr><td><b>All accounts</b></td><td></td><td class="r num">${keys.reduce((a, k) => a + by[k].n, 0)}</td><td></td><td></td><td></td><td class="r num ${cls(tot)}"><b>${money(tot)}</b></td></tr>` : "") + `</tbody>`;
+  $("acctSum").querySelectorAll("tr[data-acct]").forEach((r) => r.addEventListener("click", () => {
+    ACCT = ACCT === r.dataset.acct ? "" : r.dataset.acct; try { localStorage.setItem("v2b-manual-account", ACCT); } catch {}
+    render(false);
+  }));
+}
 function fillAccounts() {
   if (!IS_MANUAL) return;
   (typeof days !== "undefined" ? days : []).forEach((d) => Object.keys(d.accounts || {}).forEach((a) => knownAccounts.add(a)));
@@ -399,12 +538,13 @@ function sampleData(seedStart) {
         const exit = entry + sgn * movePts; const pnl = movePts * qty * 2; cum += pnl;
         trades.push({ entry_time: t(startMin), exit_time: t(startMin + hold), session: london ? "London" : "NY AM", direction: dir,
           contracts: qty, entry, exit, stop: entry - sgn * riskPts, target: entry + sgn * Math.round(riskPts * 2 * 4) / 4,
-          result, pnl_points: movePts, pnl, risk: riskPts * qty * 2, r: pnl / (riskPts * qty * 2), cum_pnl: cum, account: IS_MANUAL && rnd() < 0.4 ? "APEX-123" : "Sim101", strategy: IS_MANUAL ? (london ? "London sweep" : "V2B") : undefined });
+          result, pnl_points: movePts, pnl, risk: riskPts * qty * 2, r: pnl / (riskPts * qty * 2), cum_pnl: cum, account: IS_MANUAL ? (rnd() < 0.55 ? "Apex 007" : "Apex 012") : "Sim101", strategy: IS_MANUAL ? (london ? "London sweep" : "V2B") : undefined });
         price += (rnd() - 0.5) * 60;
       }
       out[date] = { date, instrument: "MNQ 12-26", updated: `${date} 20:45:00`, trades };
       const accounts = {};
-      trades.forEach((x) => { const a = (accounts[x.account] = accounts[x.account] || { trades: 0, pnl: 0 }); a.trades++; a.pnl += x.pnl; });
+      trades.forEach((x) => { const a = (accounts[x.account] = accounts[x.account] || { trades: 0, pnl: 0, wins: 0, losses: 0, be: 0 }); a.trades++; a.pnl += x.pnl;
+        if (x.result === "TP") a.wins++; else if (x.result === "SL") a.losses++; else a.be++; });
       list.push({ date, trades: n, pnl: cum, accounts }); made++;
     }
     d.setDate(d.getDate() - 1);
@@ -740,18 +880,23 @@ function setView(v) {
   view = v;
   $("tabTrades").setAttribute("aria-selected", v === "trades");
   $("tabLogs").setAttribute("aria-selected", v === "logs");
+  $("tabAccounts").setAttribute("aria-selected", v === "accounts");
   $("tradesView").hidden = v !== "trades";
   $("logsView").hidden = v !== "logs";
+  $("accountsView").hidden = v !== "accounts";
+  if (v === "accounts") renderAccounts();
   try { localStorage.setItem("v2b-view", v); } catch {}
   if (v === "logs") renderLog();
-  $("footnote").textContent = v === "logs"
+  $("footnote").textContent = v === "accounts"
+    ? "Balances and drawdown come from NinjaTrader through the TradeTracker indicator, about once a minute while it runs. Trades count every fill on each account, including copied trades."
+    : v === "logs"
     ? (IS_MANUAL ? "The log lists every alert, whether you took it, and what happened to the trades you took. Untick “Alerts and trades only” to see every bar's decision. Times are the trading PC's time."
                  : "The log lists V2B's decision on each 5-minute bar while it runs live. Times are the trading PC's time.")
     : footnoteTrades();
 }
 const footnoteTrades = () => sampleMode
   ? "Showing generated sample trades. On GitHub this page reads the trades V2B uploads for this trader and checks for new ones 5 seconds after each 5-minute bar."
-  : IS_MANUAL ? "Only the alerts you took become trades here. P&L is net of commission and counts every trade you took, whatever the account."
+  : IS_MANUAL ? "Every trade on your prop accounts, recorded by the TradeTracker indicator (copied trades included). P&L is net of commission. Click an account in the Accounts table to show only its trades."
   : "P&L is net: the commission your account charged is already taken off.";
 
 let currentDay = { date: "", instrument: "", trades: [], all: [] };   // what the Trades tab is showing, for Download
@@ -867,7 +1012,7 @@ async function render(withLog = true) {
   accountDayPnl = IS_MANUAL || day.account_day_pnl === undefined || day.account_day_pnl === null ? null : Number(day.account_day_pnl);
   if (day.instrument) $("instrument").textContent = `${day.instrument} · 5 minute`;
   $("updated").textContent = day.updated ? `Updated ${day.updated.slice(11, 16)} on ${fmtDay(day.updated.slice(0, 10))}` : "No updates for this date";
-  renderDays(); renderViewing(); renderSummary(trades);
+  renderDays(); renderViewing(); renderSummary(trades); renderAcctSummary(all);
   if (!days.length && !sampleMode) $("updated").textContent = "No trades uploaded yet"; renderChart(trades); renderSessions(trades); renderTrades(trades); renderCalendar();
   if (view === "trades") $("footnote").textContent = footnoteTrades();
   if (withLog && view === "logs") renderLog();
@@ -885,6 +1030,7 @@ function select(date) {
 
 $("tabTrades").addEventListener("click", () => setView("trades"));
 $("tabLogs").addEventListener("click", () => setView("logs"));
+$("tabAccounts").addEventListener("click", () => setView("accounts"));
 $("acctSel").addEventListener("change", () => {
   ACCT = $("acctSel").value;
   try { localStorage.setItem("v2b-manual-account", ACCT); } catch {}
@@ -911,7 +1057,8 @@ window.addEventListener("hashchange", () => { const h = location.hash.slice(1); 
   let savedView = "trades"; try { savedView = localStorage.getItem("v2b-view") || "trades"; } catch {}
   const h = location.hash.slice(1);
   selected = DATE_RE.test(h) ? h : latestDay();
-  setView(savedView === "logs" ? "logs" : "trades");
+  if (IS_MANUAL) { $("tabAccounts").hidden = false; await loadAccounts(); }
+  setView(savedView === "logs" ? "logs" : savedView === "accounts" && IS_MANUAL ? "accounts" : "trades");
   select(selected);
   try { $("autoRefresh").checked = localStorage.getItem("v2b-auto-refresh") !== "off"; } catch {}
   markChecked();
@@ -1052,7 +1199,9 @@ async function refreshTrades() {
   try {
     const latest = days.length ? days[days.length - 1].date : null;
     await loadIndex();
+    await loadAccounts();
     if (selected === latest || selected === todayStr()) await render(false); else renderDays();
+    if (view === "accounts") renderAccounts();
   } finally {
     busyTrades = false; nextTrades = Date.now() + TRADES_EVERY_SECONDS * 1000; updateRefreshInfo();
   }
