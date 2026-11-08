@@ -1,0 +1,45 @@
+# Publishes the V2B Trade Journal site with GitHub Actions.
+# Set the repo's Settings -> Pages -> Source to "GitHub Actions".
+#
+# The site is only republished when a page changes (index.html,
+# template/*.html, or a trader's pages, which V2B / V2BManual create once).
+# Data uploads from V2B (<name>/v2b/data/..., <name>/v2b/logs/...), V2BManual
+# (<name>/manual/data/..., <name>/manual/logs/...) and users.json are
+# ignored: the pages read those files straight from the repo.
+name: Publish V2B pages
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "*/v2b/data/**"
+      - "*/v2b/logs/**"
+      - "*/manual/data/**"
+      - "*/manual/logs/**"
+      - "users.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only the newest commit matters: a newer upload cancels an older deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

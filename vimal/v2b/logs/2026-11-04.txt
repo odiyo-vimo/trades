@@ -1,0 +1,80 @@
+2026-11-04 18:00:00  No signal: NQ 12-26 volume 2585 <= previous 5175
+2026-11-04 18:05:00  SHORT 10 @ 28763 | stop 28777.75 (14.75 pts) | TP 1R 28748.25 (14.75 pts) | risk $295.00
+2026-11-04 18:05:00  Entry filled: SHORT 1 @ 28763.00 | stop 28777.75 (14.75 pts) | target 28748.25 (14.75 pts)
+2026-11-04 18:05:00  Trade closed: TP +$295.00 | +14.75 pts (Profit target @ 28748.25)
+2026-11-04 18:10:00  Skipped (Exclusive mode): short needs the previous bar to be green, it was red.
+2026-11-04 18:15:00  Skipped: signal bar is a pin bar.
+2026-11-04 18:20:00  No signal: NQ 12-26 volume 3799 <= previous 5134
+2026-11-04 18:25:00  Skipped (Exclusive mode): short needs the previous bar to be green, it was red.
+2026-11-04 18:30:00  No signal: NQ 12-26 volume 3012 <= previous 5456
+2026-11-04 18:35:00  No signal: range 26 below minimum.
+2026-11-04 18:40:00  Skipped (Exclusive mode): short needs the previous bar to be green, it was red.
+2026-11-04 18:45:00  No signal: range 25.75 below minimum.
+2026-11-04 18:50:00  Liquidity: swept Swing L 28647.75 and closed beyond it -> breakout SHORT allowed.
+2026-11-04 18:50:00  Skipped (Exclusive mode): short needs the previous bar to be green, it was red.
+2026-11-04 18:55:00  No signal: NQ 12-26 volume 2882 <= previous 3955
+2026-11-04 19:00:00  No signal: range 27.25 below minimum.
+2026-11-04 19:00:00  Entry filled: LONG 6 @ 28612.75 | stop 28602.75 (10 pts) | target 28623.25 (10.5 pts)
+2026-11-04 19:00:00  Trade closed: TP +$290.00 | +10.36 pts (Profit target @ 28623.25)
+2026-11-04 19:05:00  Skipped (Exclusive mode): long needs the previous bar to be red, it was green.
+2026-11-04 19:10:00  No signal: NQ 12-26 volume 4110 <= previous 4451
+2026-11-04 19:15:00  No signal: NQ 12-26 volume 3889 <= previous 4110
+2026-11-04 19:20:00  No signal: NQ 12-26 volume 3073 <= previous 3889
+2026-11-04 19:25:00  Skipped (Exclusive mode): short needs the previous bar to be green, it was red.
+2026-11-04 19:30:00  No signal: NQ 12-26 volume 2768 <= previous 3434
+2026-11-04 19:35:00  SHORT 9 @ 28643.75 | stop 28659.25 (15.5 pts) | TP 1R 28628.25 (15.5 pts) | risk $279.00
+2026-11-04 19:35:00  Entry filled: SHORT 7 @ 28643.75 | stop 28659.25 (15.5 pts) | target 28628.25 (15.5 pts)
+2026-11-04 19:35:00  Trade closed: TP +$279.00 | +15.5 pts (Profit target @ 28628.25)
+2026-11-04 19:40:00  LONG 12 @ 28625.75 | stop 28614 (11.75 pts) | TP 1R 28637.5 (11.75 pts) | risk $282.00
+2026-11-04 19:40:00  Entry filled: LONG 1 @ 28625.75 | stop 28614.00 (11.75 pts) | target 28637.50 (11.75 pts)
+2026-11-04 19:45:00  In trade: LONG 12 @ 28625.75 | stop 28614.00 (11.75 pts) | target 28637.50 (11.75 pts) | open P&L +$168.00
+2026-11-04 19:45:00  Trade closed: SL -$282.00 | -11.75 pts (Stop loss @ 28614)
+2026-11-04 19:50:00  Liquidity: swept Swing L 28604.75 and rejected it (pin bar) -> reversal LONG.
+2026-11-04 19:50:00  LONG 8 @ 28610.5 | stop 28593.25 (17.25 pts) | TP 1R 28627.75 (17.25 pts) | risk $276.00 | reversal: swept Swing L 28604.75 and rejected it (pin bar)
+2026-11-04 19:50:00  Entry filled: LONG 1 @ 28610.50 | stop 28593.25 (17.25 pts) | target 28627.75 (17.25 pts)
+2026-11-04 19:55:00  In trade: LONG 8 @ 28610.50 | stop 28593.25 (17.25 pts) | target 28627.75 (17.25 pts) | open P&L +$104.00
+2026-11-04 19:55:00  Trade closed: SL -$276.00 | -17.25 pts (Stop loss @ 28593.25)
+2026-11-04 20:00:00  No signal: NQ 12-26 volume 3028 <= previous 3980
+2026-11-04 20:05:00  No signal: range 25.75 below minimum.
+2026-11-04 20:10:00  No signal: NQ 12-26 volume 2789 <= previous 3682
+2026-11-04 20:15:00  Skipped (Exclusive mode): short needs the previous bar to be green, it was red.
+2026-11-04 20:20:00  LONG 8 @ 28601.25 | stop 28584.25 (17 pts) | TP 1R 28618.25 (17 pts) | risk $272.00
+2026-11-04 20:20:00  Entry filled: LONG 4 @ 28601.25 | stop 28584.25 (17 pts) | target 28618.25 (17 pts)
+2026-11-04 20:25:00  In trade: LONG 8 @ 28601.25 | stop 28584.25 (17 pts) | target 28618.25 (17 pts) | open P&L +$36.00
+2026-11-04 20:25:00  Trade closed: TP +$272.00 | +17 pts (Profit target @ 28618.25)
+2026-11-04 20:30:00  No signal: NQ 12-26 volume 3342 <= previous 3729
+2026-11-04 20:35:00  Skipped (Exclusive mode): long needs the previous bar to be red, it was green.
+2026-11-04 20:40:00  SHORT 4 @ 28627.25 | stop 28657.5 (30.25 pts) | TP 1R 28597 (30.25 pts) | risk $242.00
+2026-11-04 20:45:00  No signal: NQ 12-26 volume 4515 <= previous 5918
+2026-11-04 20:50:00  Newer opposite signal replaces pending entry.
+2026-11-04 20:50:00  Cancelling pending entry for newer opposite signal.
+2026-11-04 20:50:00  LONG 9 @ 28565 | stop 28549.75 (15.25 pts) | TP 1R 28580.25 (15.25 pts) | risk $274.50
+2026-11-04 20:50:00  Entry filled: LONG 1 @ 28565.00 | stop 28549.75 (15.25 pts) | target 28580.25 (15.25 pts)
+2026-11-04 20:50:00  Trade closed: SL -$275.50 | -15.31 pts (Stop loss @ 28549.5)
+2026-11-04 20:55:00  SHORT 6 @ 28572.5 | stop 28596.25 (23.75 pts) | TP 1R 28548.75 (23.75 pts) | risk $285.00
+2026-11-04 20:55:00  Entry filled: SHORT 1 @ 28572.50 | stop 28596.25 (23.75 pts) | target 28548.75 (23.75 pts)
+2026-11-04 21:00:00  In trade: SHORT 6 @ 28572.50 | stop 28596.25 (23.75 pts) | target 28548.75 (23.75 pts) | open P&L +$60.00
+2026-11-04 21:00:00  Trade closed: SL -$288.00 | -24 pts (Stop loss @ 28596.5)
+2026-11-04 21:05:00  No signal: NQ 12-26 volume 8361 <= previous 18677
+2026-11-04 21:10:00  No signal: NQ 12-26 volume 2426 <= previous 8361
+2026-11-04 21:15:00  No signal: NQ 12-26 volume 2335 <= previous 2426
+2026-11-04 21:20:00  No signal: NQ 12-26 volume 1414 <= previous 2335
+2026-11-04 21:25:00  No signal: NQ 12-26 volume 822 <= previous 1414
+2026-11-04 21:30:00  No signal: NQ 12-26 volume 562 <= previous 822
+2026-11-04 21:35:00  No signal: range 18 below minimum.
+2026-11-04 21:40:00  No signal: NQ 12-26 volume 614 <= previous 783
+2026-11-04 21:45:00  No signal: NQ 12-26 volume 362 <= previous 614
+2026-11-04 21:50:00  No signal: range 10.25 below minimum.
+2026-11-04 21:55:00  No signal: range 15.25 below minimum.
+2026-11-04 22:00:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:05:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:10:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:15:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:20:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:25:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:30:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:35:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:40:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:45:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:50:00  Outside trading hours (08:00-20:00): no new trades.
+2026-11-04 23:55:00  Outside trading hours (08:00-20:00): no new trades.
