@@ -579,7 +579,7 @@ function sampleData(seedStart) {
     if (d.getDay() !== 0 && d.getDay() !== 6) {
       const date = d.toISOString().slice(0, 10);
       const trades = []; let cum = 0; let price = 28650 + rnd() * 200;
-      const n = 3 + Math.floor(rnd() * 5);
+      const n = IS_MANUAL ? 2 + Math.floor(rnd() * 2) : 3 + Math.floor(rnd() * 5);   // Manual: 2-3 alerts taken a day
       for (let i = 0; i < n; i++) {
         const london = i < 2;
         const startMin = london ? 8 * 60 + 5 + Math.floor(rnd() * 170) : 14 * 60 + 35 + Math.floor(rnd() * 140);
