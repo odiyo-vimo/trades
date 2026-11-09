@@ -416,11 +416,16 @@ async function loadAccounts() {
   catch { /* keep what is on screen */ }
 }
 function sampleAccounts() {
+  const A = (ends, type, start, bal, room, target, dd) => ({ key: `Apex ${type === "Funded" ? "PA " : ""}${ends}`, firm: "Apex", ends, type, connected: true,
+    start_balance: start, profit_target: target, max_trailing_dd: dd, net_liq: bal, cash: bal, nt_trailing_dd: room, nt_name: "" });
   return { updated: `${todayStr()} 21:00:00`, accounts: [
-    { key: "Apex 007", firm: "Apex", ends: "007", type: "Funded", connected: true, start_balance: 150000, profit_target: 3000, max_trailing_dd: 5000, net_liq: 151842.5, cash: 151842.5, nt_trailing_dd: 3686, peak_balance: 152156.5 },
-    { key: "Apex 012", firm: "Apex", ends: "012", type: "Evaluation", connected: true, start_balance: 50000, profit_target: 3000, max_trailing_dd: 2500, net_liq: 51240, cash: 51240, nt_trailing_dd: null, peak_balance: 51610 },
-    { key: "Apex 019", firm: "Apex", ends: "019", type: "Evaluation", connected: false, start_balance: 50000, profit_target: 3000, max_trailing_dd: 2500, net_liq: 49420, cash: 49420, nt_trailing_dd: null, peak_balance: 50380 },
-    { key: "Sim101", nt_name: "Sim101", firm: "", ends: "", type: "", connected: true, net_liq: 99741.5, cash: 99741.5 } ] };
+    A("007", "Funded", 150000, 152410.25, 4120.5, null, 5000),
+    A("005", "Funded", 50000, 51692.4, 2210, null, 2500),
+    A("008", "Funded", 50000, 50461.8, 2140.25, null, 2500),
+    A("009", "Funded", 50000, 50312.6, 2080, null, 2500),
+    A("013", "Funded", 25000, 25388.9, 1290.5, null, 1500),
+    A("086", "Evaluation", 250000, 258730.4, 5810, 15000, 6500),
+    { key: "Sim101", nt_name: "Sim101", firm: "", ends: "", type: "Sim", connected: true, net_liq: 99560.5, cash: 99560.5 } ] };
 }
 const acctInfo = (key) => ((ACCOUNTS && ACCOUNTS.accounts) || []).find((a) => a.key === key) || null;
 const typePill = (a) => (a && a.type ? `<span class="atype ${esc(a.type)}">${esc(a.type)}</span>` : "");
@@ -585,7 +590,31 @@ function sampleData(seedStart) {
         const roll = rnd(); const result = roll < 0.38 ? "TP" : roll < 0.68 ? "BE" : "SL";
         const entry = Math.round(price * 4) / 4;
         const movePts = result === "TP" ? Math.round(riskPts * (1.6 + rnd() * 0.6) * 4) / 4 : result === "BE" ? 1 : -riskPts;
-        const exit = entry + sgn * movePts; const pnl = movePts * qty * 2; cum += pnl;
+        const exit = entry + sgn * movePts; const pnl = movePts * qty * 2;
+        if (IS_MANUAL) {
+          // One alert you took, copied to every PA account (Replikanto), sized by account; sometimes the eval too.
+          const copies = [["Apex PA 007", 1], ["Apex PA 005", 1 / 3], ["Apex PA 008", 1 / 3], ["Apex PA 009", 1 / 3], ["Apex PA 013", 1 / 6]];
+          if (rnd() < 0.5) copies.push(["Apex 086", 1.5]);
+          const base = Math.max(6, qty * 3);
+          copies.forEach(([acct, k], ci) => {
+            const q = Math.max(1, Math.round(base * k)), slip = ci === 0 ? 0 : Math.round((rnd() - 0.5) * 2) * 0.25;
+            const ex = exit + (result === "BE" ? 0 : -sgn * slip), pts = (ex - entry) * sgn, pl = pts * q * 2;
+            cum += pl;
+            trades.push({ entry_time: t(startMin), exit_time: t(startMin + hold), session: london ? "London" : "NY AM", direction: dir,
+              contracts: q, entry, exit: ex, stop: entry - sgn * riskPts, target: entry + sgn * Math.round(riskPts * 2 * 4) / 4,
+              result, pnl_points: pts, pnl: pl, risk: riskPts * q * 2, r: pl / (riskPts * q * 2), cum_pnl: cum, account: acct, strategy: "V2B", copy_of: ci === 0 ? null : "Apex PA 007" });
+          });
+          // Now and then a trade you placed by hand on Sim.
+          if (rnd() < 0.3) {
+            const q = 4, pts = Math.round((rnd() * 16 - 7) * 4) / 4, pl = pts * q * 2; cum += pl;
+            trades.push({ entry_time: t(startMin + hold + 12), exit_time: t(startMin + hold + 31), session: london ? "London" : "NY AM", direction: dir === "Long" ? "Short" : "Long",
+              contracts: q, entry: entry + 6, exit: entry + 6 + (dir === "Long" ? -pts : pts), stop: null, target: null,
+              result: pts > 0.5 ? "TP" : pts < -0.5 ? "SL" : "BE", pnl_points: pts, pnl: pl, risk: null, r: null, cum_pnl: cum, account: "Sim101", strategy: "Manual" });
+          }
+          price += (rnd() - 0.5) * 60;
+          continue;
+        }
+        cum += pnl;
         trades.push({ entry_time: t(startMin), exit_time: t(startMin + hold), session: london ? "London" : "NY AM", direction: dir,
           contracts: qty, entry, exit, stop: entry - sgn * riskPts, target: entry + sgn * Math.round(riskPts * 2 * 4) / 4,
           result, pnl_points: movePts, pnl, risk: riskPts * qty * 2, r: pnl / (riskPts * qty * 2), cum_pnl: cum, account: IS_MANUAL ? (rnd() < 0.55 ? "Apex 007" : "Apex 012") : "Sim101", strategy: IS_MANUAL ? (london ? "London sweep" : "V2B") : undefined });
@@ -595,7 +624,7 @@ function sampleData(seedStart) {
       const accounts = {};
       trades.forEach((x) => { const a = (accounts[x.account] = accounts[x.account] || { trades: 0, pnl: 0, wins: 0, losses: 0, be: 0 }); a.trades++; a.pnl += x.pnl;
         if (x.result === "TP") a.wins++; else if (x.result === "SL") a.losses++; else a.be++; });
-      list.push({ date, trades: n, pnl: cum, accounts }); made++;
+      list.push({ date, trades: trades.length, pnl: cum, accounts }); made++;
     }
     d.setDate(d.getDate() - 1);
   }
@@ -939,6 +968,7 @@ async function renderLog() {
 function sampleLog(date) {
   const day = sampleFor().days[date];
   if (!day) return "";
+  if (IS_MANUAL) return sampleJournal(date, day);
   const events = {};
   day.trades.forEach((t) => {
     const em = t.entry_time.slice(11, 16), xm = t.exit_time.slice(11, 16);
@@ -963,6 +993,28 @@ function sampleLog(date) {
     else { const a = 400 + Math.floor(rnd() * 3000), b = a + Math.floor(rnd() * 900); out.push(`${date} ${hm}:00  ${rnd() < 0.15 ? "Skipped: signal bar is a pin bar." : `No signal: NQ 12-26 volume ${a} <= previous ${b}`}`); }
   }
   return out.join("\n");
+}
+function sampleJournal(date, day) {
+  const f = (v) => Number(v).toFixed(2), out = [];
+  const lead = day.trades.filter((t) => t.strategy !== "V2B" || !t.copy_of);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  lead.forEach((t) => {
+    const side = t.direction.toUpperCase(), at = t.entry_time.slice(11, 16);
+    const [h, m] = at.split(":").map(Number), before = (k) => `${date} ${String(h).padStart(2, "0")}:${String(Math.max(0, m - k)).padStart(2, "0")}:00`;
+    if (t.strategy === "Manual") {
+      out.push(`${t.entry_time}  MANUAL ENTRY: ${side} ${t.contracts} @ ${f(t.entry)} | SL none | TP none | Sim101 | Manual`);
+    } else {
+      const lv = `${side} ${t.contracts} @ ${f(t.entry)} | SL ${f(t.stop)} | TP ${f(t.target)} | risk $${Math.round(t.risk)}`;
+      if (rnd() < 0.5) out.push(`${before(25)}  ALERT: ${side === "LONG" ? "SHORT" : "LONG"} ${t.contracts} @ ${f(t.entry + 18)} | SL ${f(t.entry + 30)} | TP ${f(t.entry - 6)} | risk $${Math.round(t.risk)} | until ${String(h).padStart(2, "0")}:${String(Math.max(0, m - 10)).padStart(2, "0")}`);
+      out.push(`${before(10)}  ALERT: ${lv} | until ${at}`);
+      out.push(`${before(9)}  PENDING ORDER PLACED: ${lv}`);
+      out.push(`${t.entry_time}  FILLED: ${side} ${t.contracts} @ ${f(t.entry)} | SL ${f(t.stop)} | TP ${f(t.target)}`);
+      if (t.result === "BE" || t.result === "TP") out.push(`${t.entry_time.slice(0, 17)}30  STOP MOVED TO BREAK-EVEN: ${side} | entry ${f(t.entry)} | SL ${f(t.entry + (side === "LONG" ? 0.5 : -0.5))} (was ${f(t.stop)}) | TP ${f(t.target)} | 38.2% reached`);
+    }
+    const v = t.result === "TP" ? "WINNER" : t.result === "SL" ? "LOSER" : "BREAK-EVEN";
+    out.push(`${t.exit_time}  ${v}: ${side} ${t.contracts} | entry ${f(t.entry)} | exit ${f(t.exit)} (${t.result === "TP" ? "Profit target" : "Stop loss"})${t.stop ? ` | SL ${f(t.stop)} | TP ${f(t.target)}` : ""} | ${money(t.pnl)} | ${t.pnl_points >= 0 ? "+" : ""}${f(t.pnl_points)} pts${t.strategy === "Manual" ? " | Sim101 | Manual" : ""}`);
+  });
+  return out.sort().join("\n");
 }
 function setView(v) {
   view = v;
