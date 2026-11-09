@@ -171,6 +171,20 @@ td.cum { color: var(--muted); }
 .views button + button { border-left: 1px solid var(--line); }
 .views button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
 /* Accounts (Manual page) */
+.atables { display: flex; flex-direction: column; gap: 22px; }
+.atables h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 8px; display: flex; align-items: baseline; gap: 10px; }
+.atables h2 .note { font-weight: 400; font-family: inherit; font-size: 0.82rem; }
+.atable-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.atable { width: 100%; border-collapse: collapse; font-size: 0.86rem; white-space: nowrap; }
+.atable th, .atable td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.atable th { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+.atable tbody tr:last-child td { border-bottom: 0; }
+.atable tr.click { cursor: pointer; }
+.atable tr.click:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.atable .mini { display: inline-block; vertical-align: middle; width: 56px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-left: 6px; }
+.atable .mini span { display: block; height: 100%; }
+.atable .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+.atable .dot.on { background: var(--profit); }
 .acards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 .acard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .acard .ahead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -338,7 +352,7 @@ html.locked #gate { display: flex; min-height: 70vh; align-items: center; justif
   </section>
 
   <section id="accountsView" hidden>
-    <div class="acards" id="acards"><p class="note">Loading…</p></div>
+    <div class="atables" id="acards"><p class="note">Loading…</p></div>
   </section>
 
   <p class="note" id="footnote"></p>
@@ -383,7 +397,7 @@ const knownAccounts = new Set();
 const byAcct = (trades) => (ACCT ? (trades || []).filter((t) => (t.account || "") === ACCT) : (trades || []));
 function noteAccounts(trades) { (trades || []).forEach((t) => { if (t.account) knownAccounts.add(t.account); }); }
 // ---- Accounts tab (Manual page) ---------------------------------------------------
-// <trader>/manual/data/accounts.json comes from the TradeTracker indicator in NinjaTrader:
+// <trader>/manual/data/accounts.json comes from the TradeTracker add-on in NinjaTrader:
 // balance, net liquidation and NinjaTrader's trailing-drawdown figure for each account, with the
 // details typed into TradeTracker (prop firm, last digits, type, starting balance, profit target,
 // max trailing drawdown).
@@ -397,7 +411,9 @@ async function loadAccounts() {
 function sampleAccounts() {
   return { updated: `${todayStr()} 21:00:00`, accounts: [
     { key: "Apex 007", firm: "Apex", ends: "007", type: "Funded", connected: true, start_balance: 150000, profit_target: 3000, max_trailing_dd: 5000, net_liq: 151842.5, cash: 151842.5, nt_trailing_dd: 3686, peak_balance: 152156.5 },
-    { key: "Apex 012", firm: "Apex", ends: "012", type: "Evaluation", connected: true, start_balance: 50000, profit_target: 3000, max_trailing_dd: 2500, net_liq: 51240, cash: 51240, nt_trailing_dd: null, peak_balance: 51610 } ] };
+    { key: "Apex 012", firm: "Apex", ends: "012", type: "Evaluation", connected: true, start_balance: 50000, profit_target: 3000, max_trailing_dd: 2500, net_liq: 51240, cash: 51240, nt_trailing_dd: null, peak_balance: 51610 },
+    { key: "Apex 019", firm: "Apex", ends: "019", type: "Evaluation", connected: false, start_balance: 50000, profit_target: 3000, max_trailing_dd: 2500, net_liq: 49420, cash: 49420, nt_trailing_dd: null, peak_balance: 50380 },
+    { key: "Sim101", nt_name: "Sim101", firm: "", ends: "", type: "", connected: true, net_liq: 99741.5, cash: 99741.5 } ] };
 }
 const acctInfo = (key) => ((ACCOUNTS && ACCOUNTS.accounts) || []).find((a) => a.key === key) || null;
 const typePill = (a) => (a && a.type ? `<span class="atype ${esc(a.type)}">${esc(a.type)}</span>` : "");
@@ -420,50 +436,77 @@ function acctTotals(key, from, to) {
   });
   return t;
 }
+function acctGroup(a) {
+  const n = String(a.nt_name || a.key || "");
+  if (!a.type && /^(sim|playback)/i.test(n)) return "sim";
+  if (/^(sim|playback)/i.test(n) && !a.firm) return "sim";
+  if (a.type === "Funded" || a.type === "Live") return "funded";
+  return "eval";
+}
 function renderAccounts() {
   if (!IS_MANUAL) return;
   const list = ((ACCOUNTS && ACCOUNTS.accounts) || []).slice();
   // Accounts that have trades but are not in accounts.json yet.
-  days.forEach((d) => Object.keys(d.accounts || {}).forEach((k) => { if (!list.some((a) => a.key === k)) list.push({ key: k }); }));
+  days.forEach((d) => Object.keys(d.accounts || {}).forEach((k) => { if (!list.some((a) => a.key === k)) list.push({ key: k, nt_name: k }); }));
   if (!list.length) {
-    $("acards").innerHTML = `<p class="note">No accounts yet. Add the TradeTracker indicator to a chart in NinjaTrader and fill in your accounts there; they appear here within a minute.</p>`;
+    $("acards").innerHTML = `<p class="note">No accounts yet. Once the TradeTracker add-on is running in NinjaTrader, your accounts appear here within a minute.</p>`;
     return;
   }
-  const today = todayStr(), month = today.slice(0, 7);
-  const row = (lab, t) => `<tr><td>${lab}</td><td class="r num">${t.n}</td><td class="r num">${t.w}W ${t.l}L ${t.be}BE</td>
-    <td class="r num">${t.w + t.l ? Math.round((t.w / (t.w + t.l)) * 100) + "%" : "–"}</td><td class="r num ${cls(t.pnl)}">${money(t.pnl)}</td></tr>`;
-  $("acards").innerHTML = list.map((a) => {
-    const bal = num(a.net_liq) ?? num(a.cash), start = num(a.start_balance), target = num(a.profit_target), maxdd = num(a.max_trailing_dd);
-    const profit = bal !== null && start !== null ? bal - start : null;
-    let tgt = "";
-    if (target !== null && profit !== null) {
-      const pct = Math.max(0, Math.min(1, profit / target)), left = Math.max(0, target - profit);
-      tgt = `<div class="ameter"><div class="lbl"><span>${a.type === "Evaluation" ? "Profit to pass" : "Profit for payout"}</span>
-        <span><b>${money(profit)}</b> of ${money(target, 0).replace("+", "")} · ${left > 0 ? money(left).replace("+", "") + " to go" : "reached"}</span></div>
-        <div class="bar"><span style="width:${pct * 100}%;background:var(--profit)"></span></div></div>`;
-    }
-    let dd = "";
-    const r = ddRoom(a);
-    if (r) {
-      const of = maxdd !== null ? maxdd : null, pct = of ? Math.max(0, Math.min(1, r.room / of)) : null;
-      const col = pct !== null && pct < 0.25 ? "var(--loss)" : pct !== null && pct < 0.5 ? "var(--flat)" : "var(--accent)";
-      dd = `<div class="ameter"><div class="lbl"><span>Room to drawdown limit${r.src === "calculated" ? " (calculated)" : ""}</span>
-        <span><b>${money(r.room, 0).replace("+", "")}</b>${of ? ` of ${money(of, 0).replace("+", "")}` : ""}${bal !== null ? ` · limit at ${money(bal - r.room, 0).replace("+", "")}` : ""}</span></div>
-        ${pct !== null ? `<div class="bar"><span style="width:${pct * 100}%;background:${col}"></span></div>` : ""}</div>`;
-    }
-    return `<article class="acard">
-      <div class="ahead"><span class="aname">${esc(a.key)}</span>${typePill(a)}
-        ${a.connected === undefined ? "" : `<span class="aconn${a.connected ? " on" : ""}"><i></i>${a.connected ? "Connected" : "Not connected"}</span>`}</div>
-      <div><div class="abal">${bal !== null ? money(bal).replace("+", "") : "–"}</div>
-        <div class="note">${start !== null ? `Started at ${money(start, 0).replace("+", "")}${profit !== null ? ` · <span class="${cls(profit)}">${money(profit)}</span>` : ""}` : "Balance"}${a.nt_name ? ` · ${esc(a.nt_name)}` : ""}</div></div>
-      ${tgt}${dd}
-      <table class="astats"><thead><tr><th></th><th class="r">Trades</th><th class="r">Results</th><th class="r">Win %</th><th class="r">P&amp;L</th></tr></thead>
-        <tbody>${row("Today", acctTotals(a.key, today, today))}${row("This month", acctTotals(a.key, month + "-01", month + "-31"))}${row("All time", acctTotals(a.key))}</tbody></table>
-      <button type="button" class="small abtn" data-acct="${esc(a.key)}">Show this account's trades</button>
-    </article>`;
-  }).join("") + (ACCOUNTS && ACCOUNTS.updated ? `<p class="note">Balances updated ${esc(ACCOUNTS.updated.slice(11, 16))} on ${fmtDay(ACCOUNTS.updated.slice(0, 10))}.</p>` : "");
-  $("acards").querySelectorAll("button[data-acct]").forEach((b) => b.addEventListener("click", () => {
-    ACCT = b.dataset.acct; try { localStorage.setItem("v2b-manual-account", ACCT); } catch {}
+  const today = todayStr();
+  const usd = (v) => (v === null ? "–" : money(v, 0).replace("+", ""));
+  const pl = (v) => (v === null ? "–" : `<span class="${cls(v)}">${money(v, 0)}</span>`);
+  const winPct = (t) => (t.w + t.l ? Math.round((t.w / (t.w + t.l)) * 100) + "%" : "–");
+  const meter = (pct, col) => `<span class="mini"><span style="width:${Math.max(0, Math.min(1, pct)) * 100}%;background:${col}"></span></span>`;
+  const info = (a) => {
+    const bal = num(a.net_liq) ?? num(a.cash), start = num(a.start_balance), all = acctTotals(a.key), day = acctTotals(a.key, today, today);
+    const profit = bal !== null && start !== null ? bal - start : all.n ? all.pnl : null;
+    return { bal, start, all, day, profit, target: num(a.profit_target), maxdd: num(a.max_trailing_dd), r: ddRoom(a) };
+  };
+  const name = (a) => `<span class="dot${a.connected ? " on" : ""}" title="${a.connected ? "Connected" : "Not connected"}"></span><b>${esc(a.ends || a.nt_name || a.key)}</b>`;
+  const rowAttrs = (a) => `class="click" data-acct="${esc(a.key)}" title="Show this account's trades"`;
+
+  const propTable = (rows, kind) => {
+    if (!rows.length) return `<p class="note">No ${kind === "funded" ? "funded or live" : "evaluation"} accounts. Add them in Control Center &gt; New &gt; Trade Tracker settings.</p>`;
+    return `<div class="atable-wrap"><table class="atable"><thead><tr>
+      <th>Firm</th><th>Account</th>${kind === "funded" ? "<th>Type</th>" : ""}<th class="r">Balance</th><th class="r">Profit</th>
+      <th class="r">${kind === "funded" ? "Payout target" : "Profit target"}</th><th class="r">To go</th>
+      <th class="r">Max drawdown</th><th class="r">Room to limit</th><th class="r">Today</th><th class="r">Trades</th><th class="r">Win %</th></tr></thead><tbody>` +
+      rows.map((a) => {
+        const x = info(a);
+        const togo = x.target !== null && x.profit !== null ? Math.max(0, x.target - x.profit) : null;
+        const tgt = x.target === null ? "–" : usd(x.target) + (x.profit !== null ? meter(x.profit / x.target, "var(--profit)") : "");
+        const pct = x.r && x.maxdd ? x.r.room / x.maxdd : null;
+        const col = pct !== null && pct < 0.25 ? "var(--loss)" : pct !== null && pct < 0.5 ? "var(--flat)" : "var(--accent)";
+        const room = x.r ? usd(x.r.room) + (pct !== null ? meter(pct, col) : "") : "–";
+        return `<tr ${rowAttrs(a)}><td>${esc(a.firm || "–")}</td><td>${name(a)}</td>${kind === "funded" ? `<td>${typePill(a) || "–"}</td>` : ""}
+          <td class="r num">${usd(x.bal)}</td><td class="r num" title="${x.start !== null ? "Started at " + usd(x.start) : ""}">${pl(x.profit)}</td>
+          <td class="r num">${tgt}</td><td class="r num">${togo === null ? "–" : togo > 0 ? usd(togo) : "<b>reached</b>"}</td>
+          <td class="r num">${usd(x.maxdd)}</td><td class="r num" title="${x.r ? (x.r.src === "calculated" ? "Calculated from the highest balance seen" : "From NinjaTrader") : ""}">${room}</td>
+          <td class="r num">${x.day.n ? pl(x.day.pnl) : "–"}</td><td class="r num">${x.all.n}</td><td class="r num">${winPct(x.all)}</td></tr>`;
+      }).join("") + `</tbody></table></div>`;
+  };
+  const simTable = (rows) => {
+    if (!rows.length) return `<p class="note">No Sim accounts recorded.</p>`;
+    return `<div class="atable-wrap"><table class="atable"><thead><tr>
+      <th>Account</th><th class="r">Balance</th><th class="r">Profit (recorded trades)</th><th class="r">Today</th><th class="r">Trades</th><th class="r">Results</th><th class="r">Win %</th></tr></thead><tbody>` +
+      rows.map((a) => {
+        const x = info(a);
+        return `<tr ${rowAttrs(a)}><td>${name(a)}</td><td class="r num">${usd(x.bal)}</td><td class="r num">${x.all.n ? pl(x.all.pnl) : "–"}</td>
+          <td class="r num">${x.day.n ? pl(x.day.pnl) : "–"}</td><td class="r num">${x.all.n}</td>
+          <td class="r num">${x.all.w}W ${x.all.l}L ${x.all.be}BE</td><td class="r num">${winPct(x.all)}</td></tr>`;
+      }).join("") + `</tbody></table></div>`;
+  };
+  const by = { sim: [], eval: [], funded: [] };
+  list.forEach((a) => by[acctGroup(a)].push(a));
+  Object.values(by).forEach((r) => r.sort((x, y) => String(x.firm || "").localeCompare(String(y.firm || "")) || String(x.key).localeCompare(String(y.key))));
+  const head = (t, r) => `<h2>${t} <span class="note">${r.length} account${r.length === 1 ? "" : "s"}</span></h2>`;
+  $("acards").innerHTML =
+    `<section>${head("Funded", by.funded)}${propTable(by.funded, "funded")}</section>` +
+    `<section>${head("Evaluation", by.eval)}${propTable(by.eval, "eval")}</section>` +
+    `<section>${head("Sim", by.sim)}${simTable(by.sim)}</section>` +
+    (ACCOUNTS && ACCOUNTS.updated ? `<p class="note">Balances updated ${esc(ACCOUNTS.updated.slice(11, 16))} on ${fmtDay(ACCOUNTS.updated.slice(0, 10))}. Click an account to see its trades.</p>` : "");
+  $("acards").querySelectorAll("tr[data-acct]").forEach((r) => r.addEventListener("click", () => {
+    ACCT = r.dataset.acct; try { localStorage.setItem("v2b-manual-account", ACCT); } catch {}
     setView("trades"); render(false); window.scrollTo({ top: 0, behavior: "smooth" });
   }));
 }
@@ -748,13 +791,13 @@ function renderTrades(trades) {
   // Latest trade first; # stays the trade's number in the day (1 = first trade).
   const rows = trades.map((t, i) => ({ t, n: i + 1 })).reverse();
   $("trades").innerHTML = `<thead><tr>
-      <th>#</th><th>Entry</th><th>Exit</th><th>Session</th>${IS_MANUAL ? "<th>Strategy</th>" : ""}<th>Mode</th>${IS_MANUAL ? "<th>Account</th>" : ""}<th>Side</th><th class="r">Qty</th>
+      <th>#</th><th>Entry</th><th>Exit</th><th>Session</th>${IS_MANUAL ? "<th>Strategy</th>" : ""}${IS_MANUAL ? "<th>Account</th>" : ""}<th>Side</th><th class="r">Qty</th>
       <th class="r">Entry price</th><th class="r">Exit price</th><th class="r">Points</th><th>Result</th>
       <th class="r">R</th><th class="r" title="After commission">P&amp;L</th><th class="r">Cumulative P&amp;L</th>
     </tr></thead><tbody>` + liveRow() +
     rows.map(({ t, n }) => `<tr>
       <td class="num">${n}</td><td class="num">${time(t.entry_time)}</td><td class="num">${time(t.exit_time)}</td>
-      <td>${esc(t.session)}</td>${IS_MANUAL ? `<td>${esc(t.strategy || "–")}</td>` : ""}<td class="note">${t.trading_mode ? esc(t.trading_mode) : "–"}</td>${IS_MANUAL ? `<td class="note">${esc(t.account || "–")}</td>` : ""}<td><span class="dir ${esc(t.direction)}">${esc(t.direction).toUpperCase()}</span></td>
+      <td>${esc(t.session)}</td>${IS_MANUAL ? `<td>${esc(t.strategy || "–")}</td>` : ""}${IS_MANUAL ? `<td class="note">${esc(t.account || "–")}</td>` : ""}<td><span class="dir ${esc(t.direction)}">${esc(t.direction).toUpperCase()}</span></td>
       <td class="r num">${t.contracts}</td><td class="r num">${Number(t.entry).toFixed(2)}</td><td class="r num">${Number(t.exit).toFixed(2)}</td>
       <td class="r num ${cls(t.pnl_points)}">${isFinite(t.pnl_points) && t.pnl_points !== null ? signed(t.pnl_points, 2) : "–"}</td>
       <td><span class="chip ${esc(t.result)}">${esc(t.result)}</span></td>
@@ -782,13 +825,13 @@ async function fetchLog(date) {
 // Manual page, "Alerts and trades only": alerts and what happened to them, orders, fills,
 // break-even moves, closes and cancels.
 function isAlertOrTrade(msg) {
-  return /^(ALERT:|PENDING ORDER|FILLED:|WINNER:|LOSER:|BREAK-EVEN:|STOP MOVED TO BREAK-EVEN:)/.test(msg)
+  return /^(ALERT:|PENDING ORDER|FILLED:|MANUAL ENTRY:|TP1 HIT:|WINNER:|LOSER:|BREAK-EVEN:|STOP MOVED TO BREAK-EVEN:)/.test(msg)
     || /^(Alert |(LONG|SHORT) \d|Entry filled|Trade closed|Break-even|Pending entry|Newer signal replaces)/.test(msg) || /cancel/i.test(msg);
 }
 function classify(msg) {
   if (/^ALERT:/.test(msg)) return "alert";
-  if (/^(PENDING ORDER (PLACED|MOVED)|FILLED):/.test(msg) || /^(LONG|SHORT) \d/.test(msg)) return "order";
-  if (/^WINNER:/.test(msg) || /Trade closed: TP/.test(msg)) return "tp";
+  if (/^(PENDING ORDER (PLACED|MOVED)|FILLED|MANUAL ENTRY):/.test(msg) || /^(LONG|SHORT) \d/.test(msg)) return "order";
+  if (/^(WINNER|TP1 HIT):/.test(msg) || /Trade closed: TP/.test(msg)) return "tp";
   if (/^LOSER:/.test(msg) || /Trade closed: SL/.test(msg)) return "sl";
   if (/^(BREAK-EVEN|STOP MOVED TO BREAK-EVEN):/.test(msg) || /Trade closed: BE|Break-even/.test(msg)) return "be";
   if (/^(No signal|Outside trading|Skipped)/.test(msg)) return "quiet";
@@ -806,21 +849,23 @@ function findLiveTrade(lines) {
   const lv = (m) => ({ side: m[1], qty: +m[2], price: +m[3], stop: m[4] ? +m[4] : order && order.stop, target: m[5] ? +m[5] : order && order.target });
   for (const { t, msg } of lines) {
     let m;
-    if ((m = msg.match(/^ALERT: (LONG|SHORT) (\d+) @ ([\d.]+) \| (?:SL|stop) ([\d.]+)(?: \([\d.]+ pts\))? \| TP (?:\S+ )?([\d.]+)/))) {
+    if ((m = msg.match(/^ALERT: (LONG|SHORT) (\d+) @ ([\d.]+) \| (?:SL|stop) ([\d.]+)(?: \([\d.]+ pts\))? \| (?:TP1 [\d.]+ \(\d+\) \| )?TP2? (?:\S+ )?([\d.]+)/))) {
       const u = msg.match(/until (\d{2}:\d{2})/);
       alert = { state: "alert", ...lv(m), since: t, until: u ? u[1] : "" };
     }
     else if (/^Alert (lapsed|skipped)/.test(msg)) alert = null;
-    else if ((m = msg.match(/^PENDING ORDER (?:PLACED|MOVED): (LONG|SHORT) (\d+) @ ([\d.]+) \| SL ([\d.]+) \| TP ([\d.]+)/))
+    else if ((m = msg.match(/^PENDING ORDER (?:PLACED|MOVED): (LONG|SHORT) (\d+) @ ([\d.]+) \| SL ([\d.]+) \| (?:TP1 [\d.]+ \(\d+\) \| )?TP2? ([\d.]+)/))
           || (m = msg.match(/^(LONG|SHORT) (\d+) @ ([\d.]+) \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| TP \S+ ([\d.]+)/))) {
       order = { state: "pending", ...lv(m), since: t }; alert = null;
     }
-    else if ((m = msg.match(/^FILLED: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| SL ([\d.]+) \| TP ([\d.]+))?/))
+    else if ((m = msg.match(/^FILLED: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| SL ([\d.]+) \| (?:TP1 [\d.]+ \(\d+\) \| )?TP2? ([\d.]+))?/))
           || (m = msg.match(/^Entry filled: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| target ([\d.]+))?/)))
       order = { ...(order || {}), state: "live", ...lv(m), since: t };
     else if ((m = msg.match(/^In trade: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| target ([\d.]+))?/)))
       order = { ...(order || {}), state: "live", ...lv(m), since: (order && order.state === "live" && order.since) || t };
-    else if (((m = msg.match(/^STOP MOVED TO BREAK-EVEN: ([\d.]+)/)) || (m = msg.match(/^Break-even: .* stop moved to ([\d.]+)/))) && order)
+    else if ((m = msg.match(/^MANUAL ENTRY: (LONG|SHORT) (\d+) @ ([\d.]+) \| SL ([\d.]+|none) \| TP ([\d.]+|none)/)))
+      order = { state: "live", side: m[1], qty: +m[2], price: +m[3], stop: m[4] === "none" ? undefined : +m[4], target: m[5] === "none" ? undefined : +m[5], since: t };
+    else if (((m = msg.match(/^STOP MOVED TO BREAK-EVEN: (?:(?:LONG|SHORT) \| entry [\d.]+ \| SL )?([\d.]+)/)) || (m = msg.match(/^Break-even: .* stop moved to ([\d.]+)/))) && order)
       order = { ...order, state: "live", stop: +m[1] };
     else if (/^(WINNER|LOSER|BREAK-EVEN|PENDING ORDER CANCELLED):/.test(msg) || /^Trade closed:/.test(msg) || /cancelling/i.test(msg) || /^Queued signal dropped/.test(msg))
       order = null;
@@ -897,7 +942,7 @@ function setView(v) {
   try { localStorage.setItem("v2b-view", v); } catch {}
   if (v === "logs") renderLog();
   $("footnote").textContent = v === "accounts"
-    ? "Balances and drawdown come from NinjaTrader through the TradeTracker indicator, about once a minute while it runs. Trades count every fill on each account, including copied trades."
+    ? "Balances and drawdown come from NinjaTrader through the TradeTracker add-on, about once a minute while it runs. Trades count every fill on each account, including copied trades."
     : v === "logs"
     ? (IS_MANUAL ? "The log lists every alert, whether you took it, and what happened to the trades you took. Untick “Alerts and trades only” to see every bar's decision. Times are the trading PC's time."
                  : "The log lists V2B's decision on each 5-minute bar while it runs live. Times are the trading PC's time.")
@@ -905,7 +950,7 @@ function setView(v) {
 }
 const footnoteTrades = () => sampleMode
   ? "Showing generated sample trades. On GitHub this page reads the trades V2B uploads for this trader and checks for new ones 5 seconds after each 5-minute bar."
-  : IS_MANUAL ? "Every trade on your prop accounts, recorded by the TradeTracker indicator (copied trades included). P&L is net of commission. Click an account in the Accounts table to show only its trades."
+  : IS_MANUAL ? "Every trade on your prop accounts, recorded by the TradeTracker add-on (copied trades included). P&L is net of commission. Click an account in the Accounts table to show only its trades."
   : "P&L is net: the commission your account charged is already taken off.";
 
 let currentDay = { date: "", instrument: "", trades: [], all: [] };   // what the Trades tab is showing, for Download
@@ -1136,8 +1181,8 @@ async function downloadDay() {
 
   // Trades sheet (same columns and order as the table: newest first)
   const time = (s) => (s || "").slice(11, 16);
-  const header = ["#", "Entry", "Exit", "Session", "Mode", "Side", "Qty", "Entry price", "Exit price", "Points", "Result", "R", "P&L ($)", "Cumulative P&L ($)", ...(IS_MANUAL ? ["Account", "Strategy"] : [])];
-  const rows = trades.map((t, i) => [i + 1, time(t.entry_time), time(t.exit_time), t.session || "", t.trading_mode || "", t.direction || "", Number(t.contracts),
+  const header = ["#", "Entry", "Exit", "Session", "Side", "Qty", "Entry price", "Exit price", "Points", "Result", "R", "P&L ($)", "Cumulative P&L ($)", ...(IS_MANUAL ? ["Account", "Strategy"] : [])];
+  const rows = trades.map((t, i) => [i + 1, time(t.entry_time), time(t.exit_time), t.session || "", t.direction || "", Number(t.contracts),
     Number(t.entry), Number(t.exit), t.pnl_points === null ? null : Number(t.pnl_points), t.result || "",
     t.r === null ? null : Number(t.r), Number(t.pnl), Number(t.cum_pnl ?? 0), ...(IS_MANUAL ? [t.account || "", t.strategy || ""] : [])]).reverse();
   const ws2 = XLSX.utils.aoa_to_sheet([header, ...rows]);
