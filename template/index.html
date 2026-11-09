@@ -705,23 +705,25 @@ function liveTradeIsDone(l) {
     Math.abs(Number(t.entry) - Number(l.price)) <= 1);
 }
 function liveRow() {
-  const l = liveTrade;
-  if (!l || selected !== todayStr()) return "";
-  // V2BManual alert: a setup waiting for the trader to click TAKE on the chart.
-  if (l.state === "alert") {
-    if (l.until && hhmm(new Date()) > l.until) return "";   // lapsed (log not updated yet)
-    return `<tr class="alert"><td class="num">–</td><td class="num">${esc(l.since || "")}</td><td class="num note">${l.until ? "until " + esc(l.until) : ""}</td><td></td>${IS_MANUAL ? "<td></td>" : ""}<td class="note">Take it on the chart?</td>${IS_MANUAL ? "<td></td>" : ""}
-    <td><span class="dir ${l.side === "LONG" ? "Long" : "Short"}">${esc(l.side)}</span></td><td class="r num">${l.qty || ""}</td>
+  const L = liveTrade;
+  if (!L || selected !== todayStr()) return "";
+  const levels = (l) => `<td><span class="dir ${l.side === "LONG" ? "Long" : "Short"}">${esc(l.side)}</span></td><td class="r num">${l.qty || ""}</td>
     <td class="r num">${l.price ? Number(l.price).toFixed(2) : ""}</td><td class="r num note">${l.stop ? "SL " + Number(l.stop).toFixed(2) : ""}</td>
-    <td class="r num note">${l.target ? "TP " + Number(l.target).toFixed(2) : ""}</td><td><span class="chip ALERT">ALERT</span></td><td></td><td></td><td></td></tr>`;
+    <td class="r num note">${l.target ? "TP " + Number(l.target).toFixed(2) : ""}</td>`;
+  let h = "";
+  // An alert waiting for you to click TAKE on the chart (gone once its time has passed).
+  const a = L.alert;
+  if (a && !(a.until && hhmm(new Date()) > a.until))
+    h += `<tr class="alert"><td class="num">–</td><td class="num">${esc(a.since || "")}</td><td class="num note">${a.until ? "until " + esc(a.until) : ""}</td><td></td>${IS_MANUAL ? "<td></td>" : ""}<td class="note">Take it on the chart?</td>${IS_MANUAL ? "<td></td>" : ""}
+    ${levels(a)}<td><span class="chip ALERT">ALERT</span></td><td></td><td></td><td></td></tr>`;
+  // The order you took (working) or the trade in progress.
+  const l = L.order;
+  if (l && !liveTradeIsDone(l)) {
+    const chip = l.state === "live" ? `<span class="chip LIVE"><span class="livedot"></span>LIVE</span>` : `<span class="chip PENDING">PENDING</span>`;
+    h += `<tr class="live"><td class="num">–</td><td class="num">${esc(l.since || "")}</td><td class="num note">${l.state === "live" ? "In progress" : "Order working"}</td><td></td><td></td>${IS_MANUAL ? "<td></td><td></td>" : ""}
+    ${levels(l)}<td>${chip}</td><td></td><td></td><td></td></tr>`;
   }
-  if (liveTradeIsDone(l)) return "";
-  const chip = l.state === "live" ? `<span class="chip LIVE"><span class="livedot"></span>LIVE</span>` : `<span class="chip PENDING">PENDING</span>`;
-  const label = l.state === "live" ? "In progress" : "Order working";
-  return `<tr class="live"><td class="num">–</td><td class="num">${esc(l.since || "")}</td><td class="num note">${label}</td><td></td><td></td>${IS_MANUAL ? "<td></td><td></td>" : ""}
-    <td><span class="dir ${l.side === "LONG" ? "Long" : "Short"}">${esc(l.side)}</span></td><td class="r num">${l.qty || ""}</td>
-    <td class="r num">${l.price ? Number(l.price).toFixed(2) : ""}</td><td class="r num note">${l.stop ? "SL " + Number(l.stop).toFixed(2) : ""}</td>
-    <td class="r num note">${l.target ? "TP " + Number(l.target).toFixed(2) : ""}</td><td>${chip}</td><td></td><td></td><td></td></tr>`;
+  return h;
 }
 // Widen the page (centred, up to the window width) so the trades table fits without a
 // scrollbar. Below that width the table scrolls as before.
@@ -780,43 +782,50 @@ async function fetchLog(date) {
 // Manual page, "Alerts and trades only": alerts and what happened to them, orders, fills,
 // break-even moves, closes and cancels.
 function isAlertOrTrade(msg) {
-  return /^(ALERT:|Alert |(LONG|SHORT) \d|Entry filled|Trade closed|Break-even|Pending entry|Newer signal replaces)/.test(msg) || /cancel/i.test(msg);
+  return /^(ALERT:|PENDING ORDER|FILLED:|WINNER:|LOSER:|BREAK-EVEN:|STOP MOVED TO BREAK-EVEN:)/.test(msg)
+    || /^(Alert |(LONG|SHORT) \d|Entry filled|Trade closed|Break-even|Pending entry|Newer signal replaces)/.test(msg) || /cancel/i.test(msg);
 }
 function classify(msg) {
   if (/^ALERT:/.test(msg)) return "alert";
-  if (/^(LONG|SHORT) \d/.test(msg)) return "order";
-  if (/Trade closed: TP/.test(msg)) return "tp";
-  if (/Trade closed: SL/.test(msg)) return "sl";
-  if (/Trade closed: BE|Break-even/.test(msg)) return "be";
+  if (/^(PENDING ORDER (PLACED|MOVED)|FILLED):/.test(msg) || /^(LONG|SHORT) \d/.test(msg)) return "order";
+  if (/^WINNER:/.test(msg) || /Trade closed: TP/.test(msg)) return "tp";
+  if (/^LOSER:/.test(msg) || /Trade closed: SL/.test(msg)) return "sl";
+  if (/^(BREAK-EVEN|STOP MOVED TO BREAK-EVEN):/.test(msg) || /Trade closed: BE|Break-even/.test(msg)) return "be";
   if (/^(No signal|Outside trading|Skipped)/.test(msg)) return "quiet";
   return "";
 }
 // Reads today's log from the top and works out whether an alert is waiting (V2BManual),
 // an order is working or a trade is open right now: an order line starts one, "Entry filled", "In trade" or
 // a break-even move means it's live, "Trade closed" or a cancel ends it.
-let liveTrade = null;   // { state: "live" | "pending", side, qty, price, stop, target, since }
+let liveTrade = null;   // { alert, order }: each { state, side, qty, price, stop, target, since (, until) }
+// Reads today's journal from the top: the alert waiting for you (if any) and the order or
+// trade in progress (if any). Understands the journal lines (ALERT / PENDING ORDER ... /
+// FILLED / WINNER ...) and the older decision-log lines.
 function findLiveTrade(lines) {
-  let cur = null;
+  let alert = null, order = null;
+  const lv = (m) => ({ side: m[1], qty: +m[2], price: +m[3], stop: m[4] ? +m[4] : order && order.stop, target: m[5] ? +m[5] : order && order.target });
   for (const { t, msg } of lines) {
     let m;
-    if ((m = msg.match(/^ALERT: (LONG|SHORT) (\d+) @ ([\d.]+) \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| TP \S+ ([\d.]+)/))) {
+    if ((m = msg.match(/^ALERT: (LONG|SHORT) (\d+) @ ([\d.]+) \| (?:SL|stop) ([\d.]+)(?: \([\d.]+ pts\))? \| TP (?:\S+ )?([\d.]+)/))) {
       const u = msg.match(/until (\d{2}:\d{2})/);
-      cur = { state: "alert", side: m[1], qty: +m[2], price: +m[3], stop: +m[4], target: +m[5], since: t, until: u ? u[1] : "" };
+      alert = { state: "alert", ...lv(m), since: t, until: u ? u[1] : "" };
     }
-    else if (/^Alert (lapsed|skipped)/.test(msg) && cur && cur.state === "alert")
-      cur = null;
-    else if ((m = msg.match(/^(LONG|SHORT) (\d+) @ ([\d.]+) \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| TP \S+ ([\d.]+)/)))
-      cur = { state: "pending", side: m[1], qty: +m[2], price: +m[3], stop: +m[4], target: +m[5], since: t };
-    else if ((m = msg.match(/^Entry filled: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| target ([\d.]+))?/)))
-      cur = { ...(cur || {}), state: "live", side: m[1], qty: +m[2], price: +m[3], stop: m[4] ? +m[4] : cur && cur.stop, target: m[5] ? +m[5] : cur && cur.target, since: t };
+    else if (/^Alert (lapsed|skipped)/.test(msg)) alert = null;
+    else if ((m = msg.match(/^PENDING ORDER (?:PLACED|MOVED): (LONG|SHORT) (\d+) @ ([\d.]+) \| SL ([\d.]+) \| TP ([\d.]+)/))
+          || (m = msg.match(/^(LONG|SHORT) (\d+) @ ([\d.]+) \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| TP \S+ ([\d.]+)/))) {
+      order = { state: "pending", ...lv(m), since: t }; alert = null;
+    }
+    else if ((m = msg.match(/^FILLED: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| SL ([\d.]+) \| TP ([\d.]+))?/))
+          || (m = msg.match(/^Entry filled: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| target ([\d.]+))?/)))
+      order = { ...(order || {}), state: "live", ...lv(m), since: t };
     else if ((m = msg.match(/^In trade: (LONG|SHORT) (\d+) @ ([\d.]+)(?: \| stop ([\d.]+)(?: \([\d.]+ pts\))? \| target ([\d.]+))?/)))
-      cur = { ...(cur || {}), state: "live", side: m[1], qty: +m[2], price: +m[3], stop: m[4] ? +m[4] : cur && cur.stop, target: m[5] ? +m[5] : cur && cur.target, since: (cur && cur.state === "live" && cur.since) || t };
-    else if ((m = msg.match(/^Break-even: .* stop moved to ([\d.]+)/)) && cur)
-      cur = { ...cur, state: "live", stop: +m[1] };
-    else if (/^Trade closed:/.test(msg) || /cancelling/i.test(msg) || /^Queued signal dropped/.test(msg))
-      cur = null;
+      order = { ...(order || {}), state: "live", ...lv(m), since: (order && order.state === "live" && order.since) || t };
+    else if (((m = msg.match(/^STOP MOVED TO BREAK-EVEN: ([\d.]+)/)) || (m = msg.match(/^Break-even: .* stop moved to ([\d.]+)/))) && order)
+      order = { ...order, state: "live", stop: +m[1] };
+    else if (/^(WINNER|LOSER|BREAK-EVEN|PENDING ORDER CANCELLED):/.test(msg) || /^Trade closed:/.test(msg) || /cancelling/i.test(msg) || /^Queued signal dropped/.test(msg))
+      order = null;
   }
-  return cur;
+  return alert || order ? { alert, order } : null;
 }
 
 async function renderLog() {
