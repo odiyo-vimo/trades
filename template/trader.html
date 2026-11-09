@@ -122,7 +122,7 @@ h2.group { font-family: var(--font-display); font-size: 1.05rem; margin: 22px 0 
 /* Password gate: the page stays hidden until the password is entered (remembered on this browser). */
 (function () {
   var ok = false;
-  try { ok = localStorage.getItem("v2b-gate") === "e146fe1f79e91348a168e2c52e772d1e7afe97b6cc4f2c26188f40aec0a1085b"; } catch (e) {}
+  try { ok = localStorage.getItem("v2b-gate") === "c72f829bb31cebe39970b40b19e3b49a81843b7b684c9f1e7a8e7c8b5350754b"; } catch (e) {}
   if (!ok) document.documentElement.classList.add("locked");
 })();
 </script>
@@ -151,13 +151,13 @@ html.locked #gate { display: flex; min-height: 70vh; align-items: center; justif
 </div>
 <script>
 (function () {
-  var HASH = "e146fe1f79e91348a168e2c52e772d1e7afe97b6cc4f2c26188f40aec0a1085b";
+  var HASH = "c72f829bb31cebe39970b40b19e3b49a81843b7b684c9f1e7a8e7c8b5350754b";
   function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ("0" + b.toString(16)).slice(-2); }).join(""); }
   var pw = document.getElementById("gatePw"), err = document.getElementById("gateErr");
   pw.addEventListener("input", function () { err.textContent = ""; });
   document.getElementById("gateForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw.value.trim())).then(function (d) {
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw.value.toLowerCase().replace(/\s+/g, ""))).then(function (d) {
       if (hex(d) !== HASH) { err.textContent = "Wrong password. Try again."; pw.select(); return; }
       try { localStorage.setItem("v2b-gate", HASH); } catch (x) {}
       document.documentElement.classList.remove("locked");
