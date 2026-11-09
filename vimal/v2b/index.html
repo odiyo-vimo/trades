@@ -225,7 +225,7 @@ td.cum { color: var(--muted); }
 /* Password gate: the page stays hidden until the password is entered (remembered on this browser). */
 (function () {
   var ok = false;
-  try { ok = localStorage.getItem("v2b-gate") === "e146fe1f79e91348a168e2c52e772d1e7afe97b6cc4f2c26188f40aec0a1085b"; } catch (e) {}
+  try { ok = localStorage.getItem("v2b-gate") === "e146fe1f79e91348a168e2c52e772d1e7afe97b6cc4f2c26188f40aec0a1085b" && !!localStorage.getItem("v2b-key"); } catch (e) {}
   if (!ok) document.documentElement.classList.add("locked");
 })();
 </script>
@@ -262,9 +262,16 @@ html.locked #gate { display: flex; min-height: 70vh; align-items: center; justif
     e.preventDefault();
     crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw.value.trim())).then(function (d) {
       if (hex(d) !== HASH) { err.textContent = "Wrong password. Try again."; pw.select(); return; }
-      try { localStorage.setItem("v2b-gate", HASH); } catch (x) {}
-      document.documentElement.classList.remove("locked");
-      window.dispatchEvent(new Event("resize"));
+      // The data files are encrypted with this password: keep the derived key on this browser.
+      err.textContent = "Unlocking…";
+      crypto.subtle.importKey("raw", new TextEncoder().encode(pw.value.trim()), "PBKDF2", false, ["deriveBits"]).then(function (base) {
+        return crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode("v2b-trades-v1"), iterations: 200000 }, base, 512);
+      }).then(function (bits) {
+        var b = new Uint8Array(bits), s = "";
+        for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+        try { localStorage.setItem("v2b-gate", HASH); localStorage.setItem("v2b-key", btoa(s)); } catch (x) {}
+        location.reload();
+      });
     });
   });
 })();
@@ -555,7 +562,7 @@ function traderFromPath() {
 async function getJson(path) {
   const res = await fetch(fileUrl(path), { cache: "no-store" });
   if (!res.ok) throw new Error(res.status);
-  return res.json();
+  return JSON.parse(await unseal(await res.text()));
 }
 
 // ---- Sample data (shown only when no real data can be loaded) -------------
@@ -597,8 +604,35 @@ function sampleData(seedStart) {
 
 
 // ---- Loading ------------------------------------------------------------------
-// Reads a file from the repo. Returns its text, or null if it doesn't exist yet.
+// Data and logs are uploaded encrypted ("V2BENC1:" + base64(iv | AES-256-CBC | HMAC-SHA256)),
+// with keys derived from the page password when it was entered on this browser.
+let cryptoKeys = null;
+async function unseal(text) {
+  if (text === null || !text.startsWith("V2BENC1:")) return text;
+  if (!cryptoKeys) {
+    const raw = Uint8Array.from(atob(localStorage.getItem("v2b-key") || ""), (c) => c.charCodeAt(0));
+    if (raw.length !== 64) throw new Error("no key");
+    cryptoKeys = {
+      enc: await crypto.subtle.importKey("raw", raw.slice(0, 32), "AES-CBC", false, ["decrypt"]),
+      mac: await crypto.subtle.importKey("raw", raw.slice(32), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]),
+    };
+  }
+  const all = Uint8Array.from(atob(text.slice(8).trim()), (c) => c.charCodeAt(0));
+  const body = all.slice(0, all.length - 32), mac = all.slice(all.length - 32);
+  if (!(await crypto.subtle.verify("HMAC", cryptoKeys.mac, mac, body))) {
+    // Wrong key (the password changed): ask for the password again.
+    try { localStorage.removeItem("v2b-key"); } catch {}
+    location.reload();
+    throw new Error("bad key");
+  }
+  const plain = await crypto.subtle.decrypt({ name: "AES-CBC", iv: body.slice(0, 16) }, cryptoKeys.enc, body.slice(16));
+  return new TextDecoder().decode(plain);
+}
+// Reads a file from the repo. Returns its text (decrypted), or null if it doesn't exist yet.
 async function readRepoFile(path) {
+  return unseal(await readRepoFileRaw(path));
+}
+async function readRepoFileRaw(path) {
   const info = repoInfo();
   if (!info) throw new Error("not on GitHub");
   // A unique "t" on every request makes GitHub's cache return the current file
@@ -973,7 +1007,7 @@ async function calTrades(date) {
   try {
     const res = await fetch(`https://raw.githubusercontent.com/${info.owner}/${info.repo}/${BRANCH}/${traderPath()}/data/${date}.json?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
-    const trades = (await res.json()).trades || [];
+    const trades = JSON.parse(await unseal(await res.text())).trades || [];
     calDayCache[date] = { sig, trades };
     return trades;
   } catch { return null; }
