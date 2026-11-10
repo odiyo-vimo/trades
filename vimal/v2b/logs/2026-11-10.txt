@@ -1,0 +1,148 @@
+2026-11-10 00:00:00  LONG 13 @ 28061.5 | stop 28050.5 (11 pts) | TP2 0% 28082.5 (21 pts) | risk $286.00 | BE trigger 28071
+2026-11-10 00:00:00  Price came within 10% of the entry (28063.50) without filling.
+2026-11-10 00:00:00  Entry filled: LONG 1 @ 28061.50 | stop 28050.50 (11 pts) | target 28082.50 (21 pts)
+2026-11-10 00:00:00  Break-even: 38.2% reached, stop moved to 28061.5
+2026-11-10 00:00:00  Trade closed: TP +$294.00 | +21 pts (Profit target @ 28082.5)
+2026-11-10 00:05:00  Liquidity: swept Swing H 28092.50 and closed beyond it -> breakout LONG allowed.
+2026-11-10 00:05:00  LONG 8 @ 28070.25 | stop 28053 (17.25 pts) | TP2 0% 28105.75 (35.5 pts) | risk $276.00 | BE trigger 28086.25 | breakout: swept Swing H 28092.50 and closed beyond it
+2026-11-10 00:05:00  Price came within 10% of the entry (28073.75) without filling.
+2026-11-10 00:10:00  Price nearly filled, then reached the target 28105.75 without an entry: cancelling pending entry.
+2026-11-10 00:15:00  No signal: NQ 12-26 volume 647 <= previous 827
+2026-11-10 00:20:00  Skipped: pivots not aligned down for a short (L1 28066.23, L2 28057.66, L3 28044.59, L4 28012.64).
+2026-11-10 00:25:00  No signal: NQ 12-26 volume 617 <= previous 1070
+2026-11-10 00:30:00  No signal: NQ 12-26 volume 300 <= previous 617
+2026-11-10 00:35:00  Skipped: swept Swing L 28018.00 but closed back above it at 28021.25 (no breakout, no pin bar).
+2026-11-10 00:40:00  No signal: NQ 12-26 volume 589 <= previous 1142
+2026-11-10 00:45:00  No signal: NQ 12-26 volume 485 <= previous 589
+2026-11-10 00:50:00  No signal: range 18.25 below minimum.
+2026-11-10 00:55:00  Skipped: swept Swing L 27971.75 but closed back above it at 27983.25 (no breakout, no pin bar).
+2026-11-10 01:00:00  No signal: NQ 12-26 volume 825 <= previous 1408
+2026-11-10 01:05:00  Skipped: pivots not aligned up for a long (L1 28022.58, L2 28033.11, L3 28033.74, L4 28014.50).
+2026-11-10 01:10:00  Skipped: pivots not aligned down for a short (L1 28016.56, L2 28030.05, L3 28031.87, L4 28014.01).
+2026-11-10 01:15:00  No signal: NQ 12-26 volume 1955 <= previous 2299
+2026-11-10 01:20:00  No signal: NQ 12-26 volume 1223 <= previous 1955
+2026-11-10 01:25:00  No signal: NQ 12-26 volume 1134 <= previous 1223
+2026-11-10 01:30:00  No signal: NQ 12-26 volume 905 <= previous 1134
+2026-11-10 01:35:00  Skipped: pivots not aligned down for a short (L1 28003.24, L2 28015.46, L3 28021.92, L4 28010.48).
+2026-11-10 01:40:00  No signal: NQ 12-26 volume 889 <= previous 1181
+2026-11-10 01:45:00  Skipped: pivots not aligned down for a short (L1 28005.45, L2 28013.97, L3 28020.29, L4 28010.25).
+2026-11-10 01:50:00  No signal: NQ 12-26 volume 493 <= previous 1279
+2026-11-10 01:55:00  No signal: NQ 12-26 volume 383 <= previous 493
+2026-11-10 02:00:00  Skipped: pivots not aligned up for a long (L1 28003.26, L2 28010.22, L3 28016.91, L4 28009.12).
+2026-11-10 02:05:00  Skipped: signal bar is a pin bar.
+2026-11-10 02:10:00  No signal: NQ 12-26 volume 450 <= previous 614
+2026-11-10 02:15:00  Liquidity: swept Swing H 28031.00 and closed beyond it -> breakout LONG allowed.
+2026-11-10 02:15:00  Skipped: pivots not aligned up for a long (L1 28010.89, L2 28011.54, L3 28016.60, L4 28009.71).
+2026-11-10 02:20:00  No signal: NQ 12-26 volume 723 <= previous 898
+2026-11-10 02:25:00  No signal: NQ 12-26 volume 493 <= previous 723
+2026-11-10 02:30:00  No signal: NQ 12-26 volume 391 <= previous 493
+2026-11-10 02:35:00  No signal: NQ 12-26 volume 383 <= previous 391
+2026-11-10 02:40:00  No signal: range 25.75 below minimum.
+2026-11-10 02:45:00  Skipped: signal bar is a pin bar.
+2026-11-10 02:50:00  No signal: NQ 12-26 volume 600 <= previous 706
+2026-11-10 02:55:00  No signal: NQ 12-26 volume 489 <= previous 600
+2026-11-10 03:00:00  No signal: NQ 12-26 volume 449 <= previous 489
+2026-11-10 03:05:00  No signal: range 20.25 below minimum.
+2026-11-10 03:10:00  No signal: NQ 12-26 volume 324 <= previous 549
+2026-11-10 03:15:00  No signal: range 18 below minimum.
+2026-11-10 03:20:00  No signal: NQ 12-26 volume 602 <= previous 643
+2026-11-10 03:25:00  No signal: NQ 12-26 volume 372 <= previous 602
+2026-11-10 03:30:00  No signal: range 21.25 below minimum.
+2026-11-10 03:35:00  No signal: range 21.75 below minimum.
+2026-11-10 03:40:00  Liquidity: swept Swing L 27923.75 and closed beyond it -> breakout SHORT allowed.
+2026-11-10 03:40:00  SHORT 11 @ 27934.25 | stop 27947.75 (13.5 pts) | TP2 0% 27908 (26.25 pts) | risk $297.00 | BE trigger 27922.5 | breakout: swept Swing L 27923.75 and closed beyond it
+2026-11-10 03:45:00  Liquidity: swept Swing L 27891.75 and closed beyond it -> breakout SHORT allowed.
+2026-11-10 03:45:00  Newer signal replaces pending entry at 27934.25.
+2026-11-10 03:45:00  SHORT 10 @ 27899 | stop 27914 (15 pts) | TP2 0% 27868.75 (30.25 pts) | risk $300.00 | BE trigger 27885.25 | breakout: swept Swing L 27891.75 and closed beyond it (replaced previous)
+2026-11-10 03:50:00  No signal: NQ 12-26 volume 859 <= previous 1482
+2026-11-10 03:50:00  Price came within 10% of the entry (27896.00) without filling.
+2026-11-10 03:50:00  Entry filled: SHORT 4 @ 27899.50 | stop 27914.00 (14.5 pts) | target 27868.75 (30.75 pts)
+2026-11-10 03:50:00  Trade closed: SL -$145.00 | -14.5 pts (Stop loss @ 27914)
+2026-11-10 03:55:00  Skipped: pivots not aligned up for a long (L1 27930.38, L2 27957.32, L3 27976.36, L4 27986.01).
+2026-11-10 04:00:00  No signal: NQ 12-26 volume 759 <= previous 1333
+2026-11-10 04:05:00  No signal: NQ 12-26 volume 465 <= previous 759
+2026-11-10 04:10:00  SHORT 10 @ 27920.25 | stop 27934 (13.75 pts) | TP2 0% 27892.75 (27.5 pts) | risk $275.00 | BE trigger 27907.75
+2026-11-10 04:15:00  No signal: NQ 12-26 volume 538 <= previous 992
+2026-11-10 04:15:00  Price came within 10% of the entry (27917.50) without filling.
+2026-11-10 04:15:00  Entry filled: SHORT 5 @ 27920.25 | stop 27934.00 (13.75 pts) | target 27892.75 (27.5 pts)
+2026-11-10 04:20:00  In trade: SHORT 5 @ 27920.25 | stop 27934.00 (13.75 pts) | target 27892.75 (27.5 pts) | open P&L -$12.50
+2026-11-10 04:20:00  Trade closed: SL -$139.50 | -13.95 pts (Stop loss @ 27934.25)
+2026-11-10 04:25:00  Skipped: pivots not aligned up for a long (L1 27919.84, L2 27936.79, L3 27957.00, L4 27971.30).
+2026-11-10 04:30:00  No signal: NQ 12-26 volume 627 <= previous 1225
+2026-11-10 04:35:00  No signal: NQ 12-26 volume 418 <= previous 627
+2026-11-10 04:40:00  No signal: NQ 12-26 volume 370 <= previous 418
+2026-11-10 04:45:00  No signal: NQ 12-26 volume 362 <= previous 370
+2026-11-10 04:50:00  No signal: range 20.75 below minimum.
+2026-11-10 04:55:00  No signal: NQ 12-26 volume 190 <= previous 377
+2026-11-10 05:00:00  Liquidity: swept Swing H 27963.50 and closed beyond it -> breakout LONG allowed.
+2026-11-10 05:00:00  Skipped: pivots not aligned up for a long (L1 27945.94, L2 27944.88, L3 27955.50, L4 27967.06).
+2026-11-10 05:05:00  No signal: NQ 12-26 volume 442 <= previous 476
+2026-11-10 05:10:00  Skipped: pivots not aligned up for a long (L1 27950.40, L2 27947.15, L3 27955.70, L4 27966.37).
+2026-11-10 05:15:00  Skipped: pivots not aligned up for a long (L1 27957.65, L2 27950.87, L3 27957.44, L4 27967.07).
+2026-11-10 05:20:00  No signal: NQ 12-26 volume 424 <= previous 651
+2026-11-10 05:25:00  No signal: range 19.25 below minimum.
+2026-11-10 05:30:00  No signal: NQ 12-26 volume 366 <= previous 428
+2026-11-10 05:35:00  No signal: range 16.25 below minimum.
+2026-11-10 05:40:00  Skipped: pivots not aligned up for a long (L1 27989.33, L2 27971.72, L3 27969.13, L4 27973.05).
+2026-11-10 05:45:00  No signal: range 16.25 below minimum.
+2026-11-10 05:50:00  No signal: NQ 12-26 volume 668 <= previous 991
+2026-11-10 05:55:00  No signal: NQ 12-26 volume 386 <= previous 668
+2026-11-10 06:00:00  No signal: NQ 12-26 volume 297 <= previous 386
+2026-11-10 06:05:00  No signal: range 17.25 below minimum.
+2026-11-10 06:10:00  No signal: range 20 below minimum.
+2026-11-10 06:15:00  No signal: NQ 12-26 volume 575 <= previous 596
+2026-11-10 06:20:00  LONG 12 @ 27980.5 | stop 27968 (12.5 pts) | TP2 0% 28004.75 (24.25 pts) | risk $300.00 | BE trigger 27991.5
+2026-11-10 06:25:00  No signal: NQ 12-26 volume 408 <= previous 804
+2026-11-10 06:30:00  No signal: range 24 below minimum.
+2026-11-10 06:30:00  Price came within 10% of the entry (27983.00) without filling.
+2026-11-10 06:30:00  Price nearly filled, then reached the target 28004.75 without an entry: cancelling pending entry.
+2026-11-10 06:30:00  Price nearly filled, then reached the target 28004.75 without an entry: cancelling pending entry.
+2026-11-10 06:30:00  Price nearly filled, then reached the target 28004.75 without an entry: cancelling pending entry.
+2026-11-10 06:30:00  Price nearly filled, then reached the target 28004.75 without an entry: cancelling pending entry.
+2026-11-10 06:30:00  Price nearly filled, then reached the target 28004.75 without an entry: cancelling pending entry.
+2026-11-10 06:35:00  Skipped: signal bar is a pin bar.
+2026-11-10 06:40:00  No signal: NQ 12-26 volume 401 <= previous 755
+2026-11-10 06:45:00  No signal: NQ 12-26 volume 226 <= previous 401
+2026-11-10 06:50:00  Skipped: swept Swing L 27970.00 but closed back above it at 27991.75 (no breakout, no pin bar).
+2026-11-10 06:55:00  No signal: range 19.5 below minimum.
+2026-11-10 07:00:00  No signal: NQ 12-26 volume 245 <= previous 518
+2026-11-10 07:05:00  No signal: range 25 below minimum.
+2026-11-10 07:10:00  Skipped: pivots not aligned down for a short (L1 27983.33, L2 27989.48, L3 27987.23, L4 27985.56).
+2026-11-10 07:15:00  No signal: NQ 12-26 volume 698 <= previous 700
+2026-11-10 07:20:00  No signal: NQ 12-26 volume 697 <= previous 698
+2026-11-10 07:25:00  No signal: NQ 12-26 volume 551 <= previous 697
+2026-11-10 07:30:00  No signal: NQ 12-26 volume 283 <= previous 551
+2026-11-10 07:35:00  No signal: range 25.75 below minimum.
+2026-11-10 07:40:00  No signal: range 18.5 below minimum.
+2026-11-10 07:45:00  Skipped: pivots not aligned up for a long (L1 27970.02, L2 27975.58, L3 27978.40, L4 27979.95).
+2026-11-10 07:50:00  No signal: NQ 12-26 volume 793 <= previous 812
+2026-11-10 07:55:00  No signal: NQ 12-26 volume 566 <= previous 793
+2026-11-10 08:00:00  No signal: NQ 12-26 volume 343 <= previous 566
+2026-11-10 08:05:00  Skipped: pivots not aligned up for a long (L1 27982.30, L2 27979.80, L3 27980.42, L4 27981.02).
+2026-11-10 08:10:00  No signal: NQ 12-26 volume 591 <= previous 1420
+2026-11-10 08:15:00  Skipped: signal bar is a pin bar.
+2026-11-10 08:20:00  No signal: NQ 12-26 volume 651 <= previous 1232
+2026-11-10 08:25:00  No signal: NQ 12-26 volume 506 <= previous 651
+2026-11-10 08:30:00  No signal: NQ 12-26 volume 462 <= previous 506
+2026-11-10 08:35:00  No signal: NQ 12-26 volume 361 <= previous 462
+2026-11-10 08:40:00  Skipped: bullish bar closed 41.7% of the way up, needs 50% or more.
+2026-11-10 08:45:00  No signal: NQ 12-26 volume 525 <= previous 550
+2026-11-10 08:50:00  No signal: NQ 12-26 volume 431 <= previous 525
+2026-11-10 08:55:00  No signal: range 21.25 below minimum.
+2026-11-10 09:00:00  No signal: NQ 12-26 volume 367 <= previous 457
+2026-11-10 09:05:00  Skipped: swept Swing L 27927.50 but closed back above it at 27946.50 (no breakout, no pin bar).
+2026-11-10 09:10:00  No signal: NQ 12-26 volume 841 <= previous 3277
+2026-11-10 09:15:00  Skipped: pivots not aligned up for a long (L1 27966.08, L2 27975.38, L3 27978.80, L4 27980.38).
+2026-11-10 09:20:00  No signal: NQ 12-26 volume 744 <= previous 1495
+2026-11-10 09:25:00  No signal: NQ 12-26 volume 553 <= previous 744
+2026-11-10 09:30:00  No signal: NQ 12-26 volume 460 <= previous 553
+2026-11-10 09:35:00  Skipped: bullish bar closed 38.1% of the way up, needs 50% or more.
+2026-11-10 09:40:00  No signal: NQ 12-26 volume 469 <= previous 643
+2026-11-10 09:45:00  Skipped: pivots not aligned up for a long (L1 27969.88, L2 27971.04, L3 27974.48, L4 27977.06).
+2026-11-10 09:50:00  No signal: range 24.75 below minimum.
+2026-11-10 09:55:00  No signal: NQ 12-26 volume 391 <= previous 652
+2026-11-10 10:00:00  No signal: range 23 below minimum.
+2026-11-10 10:05:00  No signal: NQ 12-26 volume 602 <= previous 690
+2026-11-10 10:10:00  No signal: NQ 12-26 volume 312 <= previous 602
+2026-11-10 10:15:00  No signal: range 12.75 below minimum.
+2026-11-10 10:20:00  SHORT 12 @ 27966.25 | stop 27978.75 (12.5 pts) | TP2 0% 27942.25 (24 pts) | risk $300.00 | BE trigger 27955.5
