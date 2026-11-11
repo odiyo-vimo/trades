@@ -255,9 +255,23 @@ async function unseal(text) {
   if (!(await crypto.subtle.verify("HMAC", cryptoKeys.mac, mac, body))) { try { localStorage.removeItem("v2b-key"); } catch {} location.reload(); throw new Error("bad key"); }
   return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-CBC", iv: body.slice(0, 16) }, cryptoKeys.enc, body.slice(16)));
 }
+// GitHub's file CDN keeps a copy of each file for up to 5 minutes. Reading files at the latest
+// commit (not "main") always gets the current version. The commit check uses a conditional
+// request, which GitHub does not count against its limit when nothing changed.
+let HEAD = null, headBlockedUntil = 0;
+async function latestCommit() {
+  if (Date.now() < headBlockedUntil) return HEAD;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/commits/${BRANCH}`, { cache: "no-cache", headers: { Accept: "application/vnd.github.sha" } });
+    if (r.ok) HEAD = (await r.text()).trim();
+    else if (r.status === 403 || r.status === 429) headBlockedUntil = Date.now() + 10 * 60000;   // limit reached: read "main" for a while
+  } catch {}
+  return HEAD;
+}
 async function readFile(path) {
   try {
-    const res = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${TRADER}/${path}?t=${Date.now()}`, { cache: "no-store" });
+    const ref = HEAD && Date.now() >= headBlockedUntil ? HEAD : BRANCH;
+    const res = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${ref}/${TRADER}/${path}`, { cache: ref === BRANCH ? "no-store" : "default" });
     return res.ok ? await unseal(await res.text()) : null;
   } catch { return null; }
 }
@@ -531,6 +545,7 @@ function setTab(tab) {
   render();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });   // back to the tab: check at once
 async function setDay(date) {
   S.day = date; S.month = date.slice(0, 7);
   if (S.dates.has(date) || date === today()) await loadDay(date);
@@ -546,17 +561,22 @@ document.querySelectorAll("[data-day]").forEach((b) => b.addEventListener("click
 async function shiftMonth(d) { const [y, m] = S.month.split("-").map(Number), x = new Date(y, m - 1 + d, 1); S.month = `${x.getFullYear()}-${pad(x.getMonth() + 1)}`; await loadMonth(S.month); render(); }
 $("calPrev").addEventListener("click", () => shiftMonth(-1)); $("calNext").addEventListener("click", () => shiftMonth(1));
 
+let lastHead = null;
 async function refresh() {
   if (!LIVE || document.hidden) return;
+  const head = await latestCommit();
+  if (head && head === lastHead && Date.now() >= headBlockedUntil) return;   // nothing new uploaded
+  lastHead = head;
   const t = today();
   await Promise.all([loadIndex(), loadAccounts(), loadDay(t, true), loadLogs(t, true)]);
-  if (S.day !== t) await loadLogs(S.day);
+  if (S.day !== t) await Promise.all([loadDay(S.day, true), loadLogs(S.day, true)]);
   render();
 }
 async function start() {
   $("traderName").textContent = TRADER.charAt(0).toUpperCase() + TRADER.slice(1); $("mark").textContent = TRADER.charAt(0).toUpperCase();
   document.title = `${TRADER.charAt(0).toUpperCase() + TRADER.slice(1)} · Trade Journal`;
   $("sampleNote").hidden = LIVE;
+  if (LIVE) lastHead = await latestCommit();
   await Promise.all([loadIndex(), loadAccounts()]);
   if (!S.dates.has(S.day)) { const last = [...S.dates].sort().pop(); if (last && !LIVE) S.day = last; }
   S.month = S.day.slice(0, 7);
