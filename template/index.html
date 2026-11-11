@@ -41,6 +41,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .tabs { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 11px; padding: 3px; }
 .tabs button { border: 0; background: transparent; padding: 7px 16px; border-radius: 8px; font-weight: 700; color: var(--muted); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.top .status .btn { padding: 5px 10px; font-size: 12px; }
+.top .status .btn:disabled { opacity: .6; cursor: default; }
 .top .status { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .dot.on { background: var(--profit); box-shadow: 0 0 0 3px var(--profit-soft); }
@@ -162,7 +164,8 @@ html.locked #gate { display: grid; place-items: center; min-height: 100vh; paddi
       <button role="tab" data-tab="logs" aria-selected="false">Logs</button>
       <button role="tab" data-tab="accounts" aria-selected="false">Accounts</button>
     </div>
-    <div class="status"><span class="dot" id="liveDot"></span><span id="updated">Loading…</span></div>
+    <div class="status"><span class="dot" id="liveDot"></span><span id="updated">Loading…</span>
+      <button class="btn" id="refreshBtn" title="Check for new trades, logs and balances now">Refresh</button></div>
   </div></div>
 
   <main class="wrap">
@@ -191,10 +194,10 @@ html.locked #gate { display: grid; place-items: center; min-height: 100vh; paddi
     <section id="tab-logs" hidden style="flex-direction:column;gap:16px">
       <div class="filters"><div class="daynav" style="margin-left:0"><button data-day="-1" aria-label="Previous day">‹</button><span class="day" data-daylabel></span><button data-day="1" aria-label="Next day">›</button><button data-day="today">Today</button></div></div>
       <div class="panel"><header><h2>Auto trades log</h2><span class="sub" id="autoSub"></span>
-        <label class="switch" style="margin-left:auto"><input type="checkbox" id="autoKey" checked><i></i>Orders and results only</label></header>
+        <label class="switch" style="margin-left:auto"><input type="checkbox" id="autoKey" autocomplete="off"><i></i>Orders and results only</label></header>
         <div class="body" style="padding:12px 0 0"><div class="log" id="logAuto"></div></div></div>
       <div class="panel"><header><h2>Manual trades log</h2><span class="sub" id="manualSub"></span>
-        <label class="switch" style="margin-left:auto"><input type="checkbox" id="manualKey"><i></i>Hide alerts I skipped</label></header>
+        <label class="switch" style="margin-left:auto"><input type="checkbox" id="manualKey" autocomplete="off"><i></i>Hide alerts I skipped</label></header>
         <div class="body" style="padding:12px 0 0"><div class="log" id="logManual"></div></div></div>
     </section>
 
@@ -473,6 +476,8 @@ function renderLogs() {
   renderLog($("logAuto"), $("autoSub"), a, "No auto-trade log for this day. It appears here when the V2B strategy is running.");
   renderLog($("logManual"), $("manualSub"), m, "No manual-trade log for this day. Alerts, orders you take and trades you place by hand appear here.");
 }
+$("autoKey").checked = false; $("manualKey").checked = false;   // full logs on every load
+window.addEventListener("pageshow", () => { $("autoKey").checked = false; $("manualKey").checked = false; renderLogs(); });
 $("autoKey").addEventListener("change", renderLogs); $("manualKey").addEventListener("change", renderLogs);
 
 // Current alert / order, from today's manual log.
@@ -545,6 +550,10 @@ function setTab(tab) {
   render();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+$("refreshBtn").addEventListener("click", async () => {
+  const b = $("refreshBtn"); b.disabled = true; b.textContent = "Refreshing…";
+  try { if (LIVE) await refresh(true); else render(); } finally { b.disabled = false; b.textContent = "Refresh"; }
+});
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });   // back to the tab: check at once
 async function setDay(date) {
   S.day = date; S.month = date.slice(0, 7);
@@ -562,10 +571,10 @@ async function shiftMonth(d) { const [y, m] = S.month.split("-").map(Number), x 
 $("calPrev").addEventListener("click", () => shiftMonth(-1)); $("calNext").addEventListener("click", () => shiftMonth(1));
 
 let lastHead = null;
-async function refresh() {
-  if (!LIVE || document.hidden) return;
+async function refresh(force) {
+  if (!LIVE || (document.hidden && !force)) return;
   const head = await latestCommit();
-  if (head && head === lastHead && Date.now() >= headBlockedUntil) return;   // nothing new uploaded
+  if (!force && head && head === lastHead && Date.now() >= headBlockedUntil) return;   // nothing new uploaded
   lastHead = head;
   const t = today();
   await Promise.all([loadIndex(), loadAccounts(), loadDay(t, true), loadLogs(t, true)]);
