@@ -290,7 +290,7 @@ async function loadDay(date, force) {
     }));
     trades = [...map.values()];
   }
-  trades.sort((a, b) => String(a.exit_time).localeCompare(String(b.exit_time)));
+  trades.sort((a, b) => String(a.exit_time || "9" + a.entry_time).localeCompare(String(b.exit_time || "9" + b.entry_time)));   // open trades last
   S.days.set(date, trades);
   return trades;
 }
@@ -346,13 +346,14 @@ function buildFilters() {
 
 /* ---------- stats ---------- */
 function stats(list) {
+  list = list.filter((t) => !t.open);   // open trades are listed but not counted until they close
   const s = { n: list.length, pnl: 0, w: 0, l: 0, be: 0, gw: 0, gl: 0 };
   list.forEach((t) => { s.pnl += t.pnl; if (t.result === "TP" || (t.result !== "SL" && t.result !== "BE" && t.pnl > 0)) { s.w++; s.gw += Math.max(0, t.pnl); } else if (t.result === "SL" || (t.result !== "BE" && t.pnl < 0)) { s.l++; s.gl += Math.max(0, -t.pnl); } else s.be++; });
   s.win = s.w + s.l ? Math.round((s.w / (s.w + s.l)) * 100) : null;
   s.pf = s.gl > 0 ? s.gw / s.gl : null;
   return s;
 }
-const resultPill = (r) => `<span class="pill ${r === "TP" ? "tp" : r === "SL" ? "sl" : "be"}">${r === "TP" ? "Win" : r === "SL" ? "Loss" : "BE"}</span>`;
+const resultPill = (r) => r === "OPEN" ? `<span class="pill tag">Open</span>` : `<span class="pill ${r === "TP" ? "tp" : r === "SL" ? "sl" : "be"}">${r === "TP" ? "Win" : r === "SL" ? "Loss" : "BE"}</span>`;
 
 /* ---------- dashboard ---------- */
 function renderKpis() {
@@ -368,7 +369,7 @@ function renderKpis() {
     tile("Profit factor (month)", m.pf === null ? "–" : m.pf.toFixed(2), m.pf === null ? "" : m.pf >= 1 ? "pos" : "neg", `avg win ${m.w ? money(m.gw / m.w, 0) : "–"} · avg loss ${m.l ? money(-m.gl / m.l, 0) : "–"}`);
 }
 function renderCurve() {
-  const list = dayTrades(S.day);
+  const list = dayTrades(S.day).filter((t) => !t.open);
   $("curveSub").textContent = fmtDay(S.day);
   if (!list.length) { $("curve").innerHTML = `<div class="empty">No trades on this day for the current filters.</div>`; return; }
   const W = 640, H = 220, L = 54, R = 14, T = 14, B = 26;
@@ -401,7 +402,7 @@ function renderCal() {
 }
 function renderByAcct() {
   const list = dayTrades(S.day), by = new Map();
-  list.forEach((t) => { if (!by.has(t.account)) by.set(t.account, []); by.get(t.account).push(t); });
+  list.filter((t) => !t.open).forEach((t) => { if (!by.has(t.account)) by.set(t.account, []); by.get(t.account).push(t); });
   $("acctSub").textContent = `${fmtDay(S.day)} · ${by.size} account${by.size === 1 ? "" : "s"}`;
   if (!by.size) { $("byAcct").innerHTML = `<div class="empty">No trades on this day.</div>`; return; }
   $("byAcct").innerHTML = `<table><thead><tr><th>Account</th><th class="r">Trades</th><th class="r">Results</th><th class="r">Win %</th><th class="r">Day P&amp;L</th></tr></thead><tbody>` +
@@ -418,16 +419,16 @@ function bindAcctRows(root) {
 }
 function renderTrades() {
   const list = dayTrades(S.day);
-  $("tradesSub").textContent = `${fmtDay(S.day)} · ${list.length} trade${list.length === 1 ? "" : "s"}`;
+  $("tradesSub").textContent = `${fmtDay(S.day)} · ${list.length} trade${list.length === 1 ? "" : "s"}${list.some((t) => t.open) ? " · " + list.filter((t) => t.open).length + " open" : ""}`;
   if (!list.length) { $("trades").innerHTML = `<div class="empty">No trades on ${fmtDay(S.day)} for the current filters.</div>`; return; }
   let c = 0;
   $("trades").innerHTML = `<table><thead><tr><th>#</th><th>In</th><th>Out</th><th>Account</th><th>Strategy</th><th>Side</th><th class="r">Qty</th><th class="r">Entry</th><th class="r">Exit</th><th class="r">Points</th><th class="r">P&amp;L</th><th class="r">Day total</th><th>Result</th><th>Closed by</th><th>Session</th></tr></thead><tbody>` +
     list.map((t, i) => { c += t.pnl; const pts = num(t.pnl_points);
-      return `<tr><td class="num muted">${i + 1}</td><td class="num">${esc(String(t.entry_time).slice(11, 19))}</td><td class="num">${esc(String(t.exit_time).slice(11, 19))}</td>
+      return `<tr><td class="num muted">${i + 1}</td><td class="num">${esc(String(t.entry_time).slice(11, 19))}</td><td class="num">${t.open ? "–" : esc(String(t.exit_time).slice(11, 19))}</td>
       <td>${esc(t.account)}</td><td><span class="pill tag">${esc(t.strategy)}</span></td><td class="side ${/long/i.test(t.direction) ? "long" : "short"}">${esc(t.direction)}</td>
       <td class="r num">${esc(t.contracts)}</td><td class="r num">${num(t.entry) === null ? "–" : num(t.entry).toFixed(2)}</td><td class="r num">${num(t.exit) === null ? "–" : num(t.exit).toFixed(2)}</td>
-      <td class="r num ${cls(pts)}">${pts === null ? "–" : (pts > 0 ? "+" : "") + pts.toFixed(2)}</td><td class="r num ${cls(t.pnl)}"><b>${money(t.pnl)}</b></td><td class="r num ${cls(c)}">${money(c)}</td>
-      <td>${resultPill(t.result)}</td><td class="muted">${esc(t.exit_order || "–")}</td><td class="muted">${esc(t.session || "–")}</td></tr>`; }).join("") + `</tbody></table>`;
+      <td class="r num ${cls(pts)}">${pts === null ? "–" : (pts > 0 ? "+" : "") + pts.toFixed(2)}</td><td class="r num ${cls(t.pnl)}"><b>${t.open ? "–" : money(t.pnl)}</b></td><td class="r num ${cls(c)}">${money(c)}</td>
+      <td>${resultPill(t.result)}</td><td class="muted">${t.open ? `SL ${num(t.stop) === null ? "–" : num(t.stop).toFixed(2)} · TP ${num(t.target) === null ? "–" : num(t.target).toFixed(2)}` : esc(t.exit_order || "–")}</td><td class="muted">${esc(t.session || "–")}</td></tr>`; }).join("") + `</tbody></table>`;
 }
 $("csvBtn").addEventListener("click", () => {
   const list = dayTrades(S.day), cols = ["entry_time", "exit_time", "account", "strategy", "direction", "contracts", "entry", "exit", "pnl_points", "pnl", "result", "exit_order", "session"];
@@ -561,7 +562,7 @@ async function start() {
   S.month = S.day.slice(0, 7);
   await Promise.all([loadDay(S.day), loadMonth(S.month), loadLogs(S.day), loadLogs(today())]);
   render();
-  setInterval(refresh, 30000);
+  setInterval(refresh, 10000);
 }
 
 /* ---------- sample data (shown when the page is not on GitHub) ---------- */
