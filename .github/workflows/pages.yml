@@ -12,6 +12,8 @@ on:
   push:
     branches: [main]
     paths-ignore:
+      - "*/data/**"
+      - "*/logs/**"
       - "*/v2b/data/**"
       - "*/v2b/logs/**"
       - "*/manual/data/**"
