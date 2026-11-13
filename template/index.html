@@ -229,6 +229,12 @@ const short = (v) => (Math.abs(v) >= 1000 ? (v > 0 ? "+" : "−") + "$" + (Math.
 const usd = (v) => (v === null ? "–" : "$" + v.toLocaleString("en-US", { maximumFractionDigits: 0 }));
 const cls = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "zero");
 const isSim = (name) => /^(sim|playback)/i.test(String(name || ""));
+// Evaluation accounts: from the account list NinjaTrader uploads, else "Firm 123" names (funded ones read "Firm PA 123").
+function isEval(name) {
+  const a = S.accounts && (S.accounts.accounts || []).find((x) => x.key === name);
+  if (a && a.type) return a.type === "Evaluation";
+  return !isSim(name) && /^[A-Za-z]+ \d+$/.test(String(name || ""));
+}
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 
 /* ---------- password gate + decryption ---------- */
@@ -285,7 +291,7 @@ async function readJson(path) { const t = await readFile(path); try { return t ?
 // manual/ and v2b/ folders are still read so nothing is lost while NinjaTrader is being updated.
 const SOURCES = ["data", "manual/data", "v2b/data"];
 const S = { day: today(), month: today().slice(0, 7), strategy: store.get("tj-strategy", "all"), account: store.get("tj-account", "all"),
-            sim: store.get("tj-sim", "1") === "1", tab: "dashboard", dates: new Set(), days: new Map(), accounts: null, logs: {}, updated: null };
+            sim: store.get("tj-sim", "1") === "1", evals: store.get("tj-evals", "1") === "1", tab: "dashboard", dates: new Set(), days: new Map(), accounts: null, logs: {}, updated: null };
 
 function normalise(t, src) {
   const account = t.account || t.nt_account || "Account";
@@ -333,7 +339,8 @@ async function loadLogs(date, force) {
 }
 
 /* ---------- filters ---------- */
-const pass = (t) => (S.strategy === "all" || t.strategy === S.strategy) && (S.account === "all" || t.account === S.account) && (S.sim || !isSim(t.account));
+const acctOn = (name) => (S.sim || !isSim(name)) && (S.evals || !isEval(name));
+const pass = (t) => (S.strategy === "all" || t.strategy === S.strategy) && (S.account === "all" || t.account === S.account) && acctOn(t.account);
 const dayTrades = (date) => (S.days.get(date) || []).filter(pass);
 function monthTrades(ym) { let out = []; S.days.forEach((v, k) => { if (k.startsWith(ym)) out = out.concat(v.filter(pass)); }); return out; }
 function allKnown(field) {
@@ -343,7 +350,7 @@ function allKnown(field) {
   return [...set].filter(Boolean).sort();
 }
 function buildFilters() {
-  const strategies = allKnown("strategy"), accounts = allKnown("account").filter((a) => S.sim || !isSim(a));
+  const strategies = allKnown("strategy"), accounts = allKnown("account").filter(acctOn);
   if (S.strategy !== "all" && !strategies.includes(S.strategy)) strategies.push(S.strategy);
   if (S.account !== "all" && !accounts.includes(S.account)) S.account = "all";
   const opts = (list, cur, all) => `<option value="all">${all}</option>` + list.map((v) => `<option${v === cur ? " selected" : ""}>${esc(v)}</option>`).join("");
@@ -351,12 +358,13 @@ function buildFilters() {
     box.querySelectorAll(".f").forEach((n) => n.remove());
     const html = (box.hasAttribute("data-noStrategy") ? "" : `<label class="field f">Strategy<select data-f="strategy">${opts(strategies, S.strategy, "All strategies")}</select></label>`) +
       `<label class="field f">Account<select data-f="account">${opts(accounts, S.account, "All accounts")}</select></label>` +
-      `<label class="switch f"><input type="checkbox" data-f="sim"${S.sim ? " checked" : ""}><i></i>Include Sim accounts</label>`;
+      `<label class="switch f"><input type="checkbox" data-f="sim" autocomplete="off"${S.sim ? " checked" : ""}><i></i>Include Sim accounts</label>` +
+      `<label class="switch f"><input type="checkbox" data-f="evals" autocomplete="off"${S.evals ? " checked" : ""}><i></i>Include evaluation accounts</label>`;
     box.insertAdjacentHTML("afterbegin", html);
   });
   document.querySelectorAll("[data-f]").forEach((el) => el.addEventListener("change", () => {
-    const k = el.dataset.f; S[k] = k === "sim" ? el.checked : el.value;
-    store.set("tj-strategy", S.strategy); store.set("tj-account", S.account); store.set("tj-sim", S.sim ? "1" : "0");
+    const k = el.dataset.f; S[k] = k === "sim" || k === "evals" ? el.checked : el.value;
+    store.set("tj-strategy", S.strategy); store.set("tj-account", S.account); store.set("tj-sim", S.sim ? "1" : "0"); store.set("tj-evals", S.evals ? "1" : "0");
     render();
   }));
 }
@@ -502,12 +510,13 @@ function renderNow() {
 /* ---------- accounts ---------- */
 function ddRoom(a) {
   const bal = num(a.net_liq) ?? num(a.cash);
+  if (num(a.dd_room) !== null) return num(a.dd_room);
   if (num(a.nt_trailing_dd)) return num(a.nt_trailing_dd);
   if (bal !== null && num(a.max_trailing_dd) !== null && num(a.peak_balance) !== null) return bal - (num(a.peak_balance) - num(a.max_trailing_dd));
   return null;
 }
 function renderAccounts() {
-  const list = ((S.accounts && S.accounts.accounts) || []).filter((a) => (S.sim || a.type !== "Sim") && (S.account === "all" || a.key === S.account));
+  const list = ((S.accounts && S.accounts.accounts) || []).filter((a) => (S.sim || a.type !== "Sim") && (S.evals || a.type !== "Evaluation") && (S.account === "all" || a.key === S.account));
   const all = []; S.days.forEach((v) => all.push(...v));
   const tot = (key, date) => stats(all.filter((t) => t.account === key && (!date || String(t.exit_time).startsWith(date)) && (S.strategy === "all" || t.strategy === S.strategy)));
   const meter = (pct, col) => `<span class="bar"><span style="width:${Math.max(0, Math.min(1, pct)) * 100}%;background:${col}"></span></span>`;
