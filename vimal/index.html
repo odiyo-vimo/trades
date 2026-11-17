@@ -448,6 +448,16 @@ function exitLegs(t) {
   return String(t.exits || "").split(";").map((x) => x.match(/^(\d+)@([\d.]+)\s*(.*)$/)).filter(Boolean)
     .map((m) => ({ qty: +m[1], price: +m[2], name: m[3], pts: e === null ? null : (long ? +m[2] - e : e - +m[2]) }));
 }
+// Short exit names: Target1 -> TP1, Stop2 -> SL2, Profit target -> TP, Stop loss -> SL.
+function shortExit(n) {
+  const x = String(n || "").trim(); let m;
+  if ((m = x.match(/^target\s*(\d+)$/i))) return "TP" + m[1];
+  if ((m = x.match(/^stop\s*(\d+)$/i))) return "SL" + m[1];
+  if (/^profit target/i.test(x)) return "TP";
+  if (/^stop loss/i.test(x)) return "SL";
+  if (/^close$/i.test(x)) return "Closed";
+  return x || "Exit";
+}
 function renderTrades() {
   const list = dayTrades(S.day);
   $("tradesSub").textContent = `${fmtDay(S.day)} · ${list.length} trade${list.length === 1 ? "" : "s"}${list.some((t) => t.open) ? " · " + list.filter((t) => t.open).length + " open" : ""}`;
@@ -460,7 +470,7 @@ function renderTrades() {
       const legPts = multi ? `<div class="sub" style="font-weight:600">${legs.map((l) => `${l.pts === null ? "–" : sign(l.pts)} ×${l.qty}`).join(" · ")}</div>` : "";
       const legExit = multi ? `<div class="sub" style="font-weight:600">${legs.map((l) => `${l.price.toFixed(2)} ×${l.qty}`).join(" · ")}</div>` : "";
       const closedBy = t.open ? `SL ${num(t.stop) === null ? "–" : num(t.stop).toFixed(2)} · TP ${num(t.target) === null ? "–" : num(t.target).toFixed(2)}`
-        : multi ? esc(legs.map((l) => l.name || "Exit").join(" + ")) : esc(t.exit_order || "–");
+        : multi ? esc(legs.map((l) => shortExit(l.name)).join(" + ")) : esc(t.exit_order ? shortExit(t.exit_order) : "–");
       return `<tr><td class="num muted">${n}</td><td>${esc(t.account)}</td><td><span class="pill tag">${esc(t.strategy)}</span></td><td class="side ${/long/i.test(t.direction) ? "long" : "short"}">${esc(t.direction)}</td>
       <td class="num">${esc(String(t.entry_time).slice(11, 19))}</td><td class="num">${t.open ? "–" : esc(String(t.exit_time).slice(11, 19))}</td>
       <td class="r num">${esc(t.contracts)}</td><td class="r num">${num(t.entry) === null ? "–" : num(t.entry).toFixed(2)}</td><td class="r num">${num(t.exit) === null ? "–" : num(t.exit).toFixed(2)}${legExit}</td>
@@ -535,7 +545,7 @@ function renderAccounts() {
   const table = (title, rows, sim) => {
     if (!rows.length) return "";
     return `<div class="panel"><header><h2>${title}</h2><span class="sub">${rows.length} account${rows.length === 1 ? "" : "s"}</span></header><div class="body" style="padding:12px 0 0"><div class="scroll"><table><thead><tr>
-      <th>Account</th>${sim ? "" : "<th>Firm</th>"}<th class="r">Balance</th><th class="r">Profit</th>${sim ? "" : `<th class="r">Target</th><th class="r">To go</th><th class="r">Room to drawdown limit</th>`}<th class="r">Today</th><th class="r">Trades</th><th class="r">Win %</th></tr></thead><tbody>` +
+      <th>Account</th>${sim ? "" : "<th>Firm</th>"}<th class="r">Balance</th><th class="r">Profit</th>${sim ? "" : `<th class="r">Target</th><th class="r">To go</th><th class="r">Drawdown</th>`}<th class="r">Today</th><th class="r">Trades</th><th class="r">Win %</th></tr></thead><tbody>` +
       rows.map((a) => {
         const bal = num(a.net_liq) ?? num(a.cash), start = num(a.start_balance), t = tot(a.key), d = tot(a.key, today());
         const profit = bal !== null && start !== null ? bal - start : t.n ? t.pnl : null, target = num(a.profit_target), maxdd = num(a.max_trailing_dd), room = ddRoom(a);
