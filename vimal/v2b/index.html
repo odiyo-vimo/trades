@@ -442,21 +442,33 @@ function bindAcctRows(root) {
     if (S.tab === "accounts") setTab("dashboard"); else render();
   }));
 }
+// Exit legs from "1@26887.50 Target1;1@27059.50 Target2" -> [{qty, price, name, pts}]
+function exitLegs(t) {
+  const e = num(t.entry), long = /long/i.test(t.direction);
+  return String(t.exits || "").split(";").map((x) => x.match(/^(\d+)@([\d.]+)\s*(.*)$/)).filter(Boolean)
+    .map((m) => ({ qty: +m[1], price: +m[2], name: m[3], pts: e === null ? null : (long ? +m[2] - e : e - +m[2]) }));
+}
 function renderTrades() {
   const list = dayTrades(S.day);
   $("tradesSub").textContent = `${fmtDay(S.day)} · ${list.length} trade${list.length === 1 ? "" : "s"}${list.some((t) => t.open) ? " · " + list.filter((t) => t.open).length + " open" : ""}`;
   if (!list.length) { $("trades").innerHTML = `<div class="empty">No trades on ${fmtDay(S.day)} for the current filters.</div>`; return; }
-  let c = 0;
-  $("trades").innerHTML = `<table><thead><tr><th>#</th><th>In</th><th>Out</th><th>Account</th><th>Strategy</th><th>Side</th><th class="r">Qty</th><th class="r">Entry</th><th class="r">Exit</th><th class="r">Points</th><th class="r">P&amp;L</th><th class="r">Day total</th><th>Result</th><th>Closed by</th><th>Session</th></tr></thead><tbody>` +
-    list.map((t, i) => { c += t.pnl; const pts = num(t.pnl_points);
-      return `<tr><td class="num muted">${i + 1}</td><td class="num">${esc(String(t.entry_time).slice(11, 19))}</td><td class="num">${t.open ? "–" : esc(String(t.exit_time).slice(11, 19))}</td>
-      <td>${esc(t.account)}</td><td><span class="pill tag">${esc(t.strategy)}</span></td><td class="side ${/long/i.test(t.direction) ? "long" : "short"}">${esc(t.direction)}</td>
-      <td class="r num">${esc(t.contracts)}</td><td class="r num">${num(t.entry) === null ? "–" : num(t.entry).toFixed(2)}</td><td class="r num">${num(t.exit) === null ? "–" : num(t.exit).toFixed(2)}</td>
-      <td class="r num ${cls(pts)}">${pts === null ? "–" : (pts > 0 ? "+" : "") + pts.toFixed(2)}</td><td class="r num ${cls(t.pnl)}"><b>${t.open ? "–" : money(t.pnl)}</b></td><td class="r num ${cls(c)}">${money(c)}</td>
-      <td>${resultPill(t.result)}</td><td class="muted">${t.open ? `SL ${num(t.stop) === null ? "–" : num(t.stop).toFixed(2)} · TP ${num(t.target) === null ? "–" : num(t.target).toFixed(2)}` : esc(t.exit_order || "–")}</td><td class="muted">${esc(t.session || "–")}</td></tr>`; }).join("") + `</tbody></table>`;
+  const sign = (v) => (v > 0 ? "+" : "") + v.toFixed(2);
+  // Newest first: open trades on top, then by exit time; # counts in time order (oldest = 1).
+  const rows = list.map((t, i) => ({ t, n: i + 1 })).reverse();
+  $("trades").innerHTML = `<table><thead><tr><th>#</th><th>Account</th><th>Strategy</th><th>Side</th><th>In</th><th>Out</th><th class="r">Qty</th><th class="r">Entry</th><th class="r">Exit</th><th class="r">Points</th><th class="r">P&amp;L</th><th>Result</th><th>Closed by</th><th>Session</th></tr></thead><tbody>` +
+    rows.map(({ t, n }) => { const pts = num(t.pnl_points), legs = exitLegs(t), multi = legs.length > 1;
+      const legPts = multi ? `<div class="sub" style="font-weight:600">${legs.map((l) => `${l.pts === null ? "–" : sign(l.pts)} ×${l.qty}`).join(" · ")}</div>` : "";
+      const legExit = multi ? `<div class="sub" style="font-weight:600">${legs.map((l) => `${l.price.toFixed(2)} ×${l.qty}`).join(" · ")}</div>` : "";
+      const closedBy = t.open ? `SL ${num(t.stop) === null ? "–" : num(t.stop).toFixed(2)} · TP ${num(t.target) === null ? "–" : num(t.target).toFixed(2)}`
+        : multi ? esc(legs.map((l) => l.name || "Exit").join(" + ")) : esc(t.exit_order || "–");
+      return `<tr><td class="num muted">${n}</td><td>${esc(t.account)}</td><td><span class="pill tag">${esc(t.strategy)}</span></td><td class="side ${/long/i.test(t.direction) ? "long" : "short"}">${esc(t.direction)}</td>
+      <td class="num">${esc(String(t.entry_time).slice(11, 19))}</td><td class="num">${t.open ? "–" : esc(String(t.exit_time).slice(11, 19))}</td>
+      <td class="r num">${esc(t.contracts)}</td><td class="r num">${num(t.entry) === null ? "–" : num(t.entry).toFixed(2)}</td><td class="r num">${num(t.exit) === null ? "–" : num(t.exit).toFixed(2)}${legExit}</td>
+      <td class="r num ${cls(pts)}" title="${multi ? "Average over all contracts; each exit below" : ""}">${pts === null ? "–" : sign(pts) + (multi ? " avg" : "")}${legPts}</td><td class="r num ${cls(t.pnl)}"><b>${t.open ? "–" : money(t.pnl)}</b></td>
+      <td>${resultPill(t.result)}</td><td class="muted">${closedBy}</td><td class="muted">${esc(t.session || "–")}</td></tr>`; }).join("") + `</tbody></table>`;
 }
 $("csvBtn").addEventListener("click", () => {
-  const list = dayTrades(S.day), cols = ["entry_time", "exit_time", "account", "strategy", "direction", "contracts", "entry", "exit", "pnl_points", "pnl", "result", "exit_order", "session"];
+  const list = dayTrades(S.day), cols = ["account", "strategy", "direction", "entry_time", "exit_time", "contracts", "entry", "exit", "pnl_points", "pnl", "result", "exit_order", "exits", "session"];
   const csv = [cols.join(",")].concat(list.map((t) => cols.map((k) => `"${String(t[k] ?? "").replace(/"/g, '""')}"`).join(","))).join("\r\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `trades-${S.day}.csv`; a.click();
 });
