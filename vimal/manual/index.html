@@ -228,6 +228,9 @@ const money = (v, dp = 2) => (v === null ? "–" : (v > 0 ? "+" : v < 0 ? "−" 
 const short = (v) => (Math.abs(v) >= 1000 ? (v > 0 ? "+" : "−") + "$" + (Math.abs(v) / 1000).toFixed(1) + "k" : money(v, 0));
 const usd = (v) => (v === null ? "–" : "$" + v.toLocaleString("en-US", { maximumFractionDigits: 0 }));
 const cls = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "zero");
+// Accounts removed from the page (closed or failed). Their trades stay in the data files.
+const REMOVED_ACCOUNTS = ["Apex PA 013"];
+const removed = (name) => REMOVED_ACCOUNTS.includes(String(name || ""));
 const isSim = (name) => /^(sim|playback)/i.test(String(name || ""));
 // Evaluation accounts: from the account list NinjaTrader uploads, else "Firm 123" names (funded ones read "Firm PA 123").
 function isEval(name) {
@@ -339,7 +342,7 @@ async function loadLogs(date, force) {
 }
 
 /* ---------- filters ---------- */
-const acctOn = (name) => (S.sim || !isSim(name)) && (S.evals || !isEval(name));
+const acctOn = (name) => !removed(name) && (S.sim || !isSim(name)) && (S.evals || !isEval(name));
 const pass = (t) => (S.strategy === "all" || t.strategy === S.strategy) && (S.account === "all" || t.account === S.account) && acctOn(t.account);
 const dayTrades = (date) => (S.days.get(date) || []).filter(pass);
 function monthTrades(ym) { let out = []; S.days.forEach((v, k) => { if (k.startsWith(ym)) out = out.concat(v.filter(pass)); }); return out; }
@@ -347,7 +350,7 @@ function allKnown(field) {
   const set = new Set();
   S.days.forEach((v) => v.forEach((t) => set.add(t[field])));
   if (field === "account" && S.accounts) (S.accounts.accounts || []).forEach((a) => set.add(a.key));
-  return [...set].filter(Boolean).sort();
+  return [...set].filter((v) => v && !(field === "account" && removed(v))).sort();
 }
 function buildFilters() {
   const strategies = allKnown("strategy"), accounts = allKnown("account").filter(acctOn);
@@ -538,7 +541,7 @@ function ddRoom(a) {
   return null;
 }
 function renderAccounts() {
-  const list = ((S.accounts && S.accounts.accounts) || []).filter((a) => (S.sim || a.type !== "Sim") && (S.evals || a.type !== "Evaluation") && (S.account === "all" || a.key === S.account));
+  const list = ((S.accounts && S.accounts.accounts) || []).filter((a) => !removed(a.key) && (S.sim || a.type !== "Sim") && (S.evals || a.type !== "Evaluation") && (S.account === "all" || a.key === S.account));
   const all = []; S.days.forEach((v) => all.push(...v));
   const tot = (key, date) => stats(all.filter((t) => t.account === key && (!date || String(t.exit_time).startsWith(date)) && (S.strategy === "all" || t.strategy === S.strategy)));
   const meter = (pct, col) => `<span class="bar"><span style="width:${Math.max(0, Math.min(1, pct)) * 100}%;background:${col}"></span></span>`;
