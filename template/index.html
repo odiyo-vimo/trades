@@ -135,6 +135,23 @@ html.locked #gate { display: grid; place-items: center; min-height: 100vh; paddi
 #gate button { border: 0; background: var(--accent); color: #fff; border-radius: 10px; padding: 11px; font-weight: 800; cursor: pointer; }
 #gate .err { color: var(--loss); font-size: 12px; min-height: 16px; font-weight: 700; }
 .sample { background: var(--flat-soft); color: var(--flat); border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 12px; }
+/* Day page */
+.dayhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dayhead h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.daystats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .daystats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.editor { min-height: 320px; padding: 16px; outline: none; font: 500 15px/1.65 var(--font); overflow-wrap: anywhere; }
+.editor:empty::before { content: attr(data-placeholder); color: var(--muted); }
+.editor img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); display: block; margin: 10px 0; }
+.editor:focus { box-shadow: inset 0 0 0 2px var(--accent-soft); border-radius: 0 0 14px 14px; }
+.savebar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:hover { color: #fff; filter: brightness(1.08); }
+.btn:disabled { opacity: .6; cursor: default; }
+.savestate { font-size: 12px; font-weight: 700; color: var(--muted); }
+.savestate.dirty { color: var(--flat); } .savestate.err { color: var(--loss); } .savestate.ok { color: var(--profit); }
+.cal button { position: relative; }
+.cal button .note { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); position: absolute; top: 6px; right: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 <script>
@@ -190,6 +207,24 @@ html.locked #gate { display: grid; place-items: center; min-height: 100vh; paddi
       </div>
     </section>
 
+    <!-- Day page (opened from the calendar) -->
+    <section id="tab-day" hidden style="flex-direction:column;gap:16px">
+      <div class="dayhead">
+        <button class="btn" id="dayBack">‹ Back</button>
+        <h1 id="dayTitle">Day</h1>
+        <div class="daynav" style="margin-left:0"><button id="dayPrev" aria-label="Previous day">‹</button><button id="dayNext" aria-label="Next day">›</button></div>
+      </div>
+      <div class="daystats" id="dayStats"></div>
+      <div class="panel">
+        <header><h2>Notes</h2><span class="sub">Type, or paste screenshots straight in</span>
+          <div class="savebar"><span class="savestate" id="saveState"></span>
+            <label class="btn" for="imgPick">Add image</label><input type="file" id="imgPick" accept="image/*" multiple hidden>
+            <button class="btn primary" id="saveBtn">Save</button></div></header>
+        <div class="body" style="padding:12px 0 0"><div class="editor" id="editor" contenteditable="true" data-placeholder="What happened today? Setups, mistakes, what to repeat. Paste chart screenshots with Ctrl+V." role="textbox" aria-multiline="true" aria-label="Notes for this day"></div></div>
+      </div>
+      <div class="panel"><header><h2>Trades</h2><span class="sub" id="dayTradesSub"></span></header><div class="body" style="padding:12px 0 0"><div class="scroll" id="dayTrades"></div></div></div>
+    </section>
+
     <!-- Logs -->
     <section id="tab-logs" hidden style="flex-direction:column;gap:16px">
       <div class="filters"><div class="daynav" style="margin-left:0"><button data-day="-1" aria-label="Previous day">‹</button><span class="day" data-daylabel></span><button data-day="1" aria-label="Next day">›</button><button data-day="today">Today</button></div></div>
@@ -215,7 +250,7 @@ const LIVE = /github\.io$/.test(location.hostname);
 const OWNER = "odiyo-vimo", REPO = "trades", BRANCH = "main", HASH = "c72f829bb31cebe39970b40b19e3b49a81843b7b684c9f1e7a8e7c8b5350754b";
 const segs = location.pathname.split("/").filter((s) => s && !/\.html?$/i.test(s));
 const TRADER = LIVE ? (segs[1] || "vimal") : "vimal";
-if (LIVE && segs.length > 2) location.replace(`/${segs[0]}/${segs[1]}/`);   // old /v2b/ and /manual/ links
+if (LIVE && segs.length > 2 && segs[2] !== "beta") location.replace(`/${segs[0]}/${segs[1]}/`);   // old /v2b/ and /manual/ links
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pad = (n) => String(n).padStart(2, "0");
@@ -294,7 +329,7 @@ async function readJson(path) { const t = await readFile(path); try { return t ?
 // manual/ and v2b/ folders are still read so nothing is lost while NinjaTrader is being updated.
 const SOURCES = ["data", "manual/data", "v2b/data"];
 const S = { day: today(), month: today().slice(0, 7), strategy: store.get("tj-strategy", "all"), account: store.get("tj-account", "all"),
-            sim: store.get("tj-sim", "1") === "1", evals: store.get("tj-evals", "1") === "1", tab: "dashboard", dates: new Set(), days: new Map(), accounts: null, logs: {}, updated: null };
+            notes: new Set(), sim: store.get("tj-sim", "1") === "1", evals: store.get("tj-evals", "1") === "1", tab: "dashboard", dates: new Set(), days: new Map(), accounts: null, logs: {}, updated: null };
 
 function normalise(t, src) {
   const account = t.account || t.nt_account || "Account";
@@ -423,10 +458,10 @@ function renderCal() {
   for (let i = 0; i < (first.getDay() + 6) % 7; i++) html += `<button class="out" tabindex="-1" aria-hidden="true"></button>`;
   for (let d = 1; d <= n; d++) {
     const date = `${S.month}-${pad(d)}`, s = stats(dayTrades(date));
-    html += `<button data-date="${date}" class="${s.n ? (s.pnl > 0 ? "win" : s.pnl < 0 ? "loss" : "") : ""}${date === S.day ? " sel" : ""}" title="${s.n} trades"><span class="d">${d}</span><span class="p">${s.n ? short(s.pnl) : ""}</span></button>`;
+    html += `<button data-date="${date}" class="${s.n ? (s.pnl > 0 ? "win" : s.pnl < 0 ? "loss" : "") : ""}${date === S.day ? " sel" : ""}" title="${s.n} trades">${S.notes.has(date) ? `<span class="note" title="Has notes"></span>` : ""}<span class="d">${d}</span><span class="p">${s.n ? short(s.pnl) : ""}</span></button>`;
   }
   $("cal").innerHTML = html;
-  $("cal").querySelectorAll("button[data-date]").forEach((b) => b.addEventListener("click", () => setDay(b.dataset.date)));
+  $("cal").querySelectorAll("button[data-date]").forEach((b) => b.addEventListener("click", () => openDay(b.dataset.date)));
 }
 function renderByAcct() {
   const list = dayTrades(S.day), by = new Map();
@@ -568,11 +603,155 @@ function renderAccounts() {
   bindAcctRows($("acctTables"));
 }
 
+/* ---------- day page: notes and screenshots ---------- */
+// Notes are saved to <trader>/journal/<date>.json in the repo, encrypted with the page password
+// like the trade data. Saving uses a GitHub key that is itself stored encrypted in this page.
+const SEALED_KEY = "V2BENC1:gOMiKKcGvI20Z5N0OVESjJ44VY2jplsmGCRd346MNe8R3luZquE9TFWSHlWz5WtC869sZ5Jk3gTnekDC45v8CH/6/KL3S5eC41Ffcj/Cdh4tC26i6NEUF9Bg+F54hqWYcWFsvOPyB/4Ph0XxLoB6kgMt1gBYxmzC6kB+qp75ST3rC59xdwQSqYflAv9SVK20";
+let ghToken = null, noteSha = null, noteDirty = false, noteDay = null, leaveArmed = false;
+async function token() { return ghToken || (ghToken = (await unseal(SEALED_KEY)).trim()); }
+async function sealText(plain) {
+  const raw = Uint8Array.from(atob(store.get("v2b-key", "")), (c) => c.charCodeAt(0));
+  const ek = await crypto.subtle.importKey("raw", raw.slice(0, 32), "AES-CBC", false, ["encrypt"]);
+  const mk = await crypto.subtle.importKey("raw", raw.slice(32), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const iv = crypto.getRandomValues(new Uint8Array(16));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-CBC", iv }, ek, new TextEncoder().encode(plain)));
+  const body = new Uint8Array(16 + ct.length); body.set(iv); body.set(ct, 16);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", mk, body));
+  const all = new Uint8Array(body.length + 32); all.set(body); all.set(mac, body.length);
+  return "V2BENC1:" + b64(all);
+}
+function b64(bytes) { let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
+const noteApi = (date) => `https://api.github.com/repos/${OWNER}/${REPO}/contents/${TRADER}/journal/${date}.json`;
+const ghHeaders = async (extra) => ({ Authorization: "Bearer " + (await token()), Accept: "application/vnd.github+json", ...(extra || {}) });
+async function loadNoteIndex() {
+  if (!LIVE) { try { S.notes = new Set(JSON.parse(store.get("tj-demo-notes-index", "[]"))); } catch {} return; }
+  try {
+    const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${TRADER}/journal?ref=${BRANCH}`, { cache: "no-cache", headers: await ghHeaders() });
+    if (r.ok) S.notes = new Set((await r.json()).map((f) => f.name.replace(/\.json$/, "")).filter((n) => /^\d{4}-\d\d-\d\d$/.test(n)));
+  } catch {}
+}
+async function loadNote(date) {
+  noteSha = null;
+  if (!LIVE) return store.get("tj-demo-note-" + date, "");
+  const r = await fetch(noteApi(date) + `?ref=${BRANCH}`, { cache: "no-cache", headers: await ghHeaders() });
+  if (r.status === 404) return "";
+  if (!r.ok) throw new Error("GitHub said " + r.status);
+  const f = await r.json(); noteSha = f.sha;
+  let text = f.content ? atob(f.content.replace(/\n/g, "")) : "";
+  if (!text) { const raw = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${f.sha ? BRANCH : BRANCH}/${TRADER}/journal/${date}.json?t=${Date.now()}`, { cache: "no-store" }); text = await raw.text(); }
+  return JSON.parse(await unseal(text)).html || "";
+}
+async function putNote(date, body) {
+  return fetch(noteApi(date), { method: "PUT", headers: await ghHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body) });
+}
+async function saveNote(date, html) {
+  if (!LIVE) { store.set("tj-demo-note-" + date, html); S.notes.add(date); store.set("tj-demo-notes-index", JSON.stringify([...S.notes])); return; }
+  const sealed = await sealText(JSON.stringify({ date, html, updated: new Date().toISOString() }));
+  const body = { message: `Journal: notes for ${date}`, content: b64(new TextEncoder().encode(sealed)), branch: BRANCH };
+  if (noteSha) body.sha = noteSha;
+  let r = await putNote(date, body);
+  if (r.status === 409 || r.status === 422) {   // saved on another device meanwhile: save over the newest copy
+    const cur = await fetch(noteApi(date) + `?ref=${BRANCH}`, { cache: "no-cache", headers: await ghHeaders() });
+    if (cur.ok) { body.sha = (await cur.json()).sha; r = await putNote(date, body); }
+  }
+  if (!r.ok) throw new Error("GitHub said " + r.status);
+  noteSha = (await r.json()).content.sha; S.notes.add(date);
+}
+// Only text, line breaks, simple formatting and images are kept (pasted web pages bring clutter).
+function cleanHtml(html) {
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html"), out = document.createElement("div");
+  const ok = new Set(["B", "STRONG", "I", "EM", "U", "BR", "P", "DIV", "UL", "OL", "LI", "H1", "H2", "H3"]);
+  const walk = (src, dst) => src.childNodes.forEach((n) => {
+    if (n.nodeType === 3) dst.appendChild(document.createTextNode(n.textContent));
+    else if (n.nodeType === 1 && n.tagName === "IMG") { const s = n.getAttribute("src") || ""; if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(s)) { const i = document.createElement("img"); i.src = s; dst.appendChild(i); } }
+    else if (n.nodeType === 1 && ok.has(n.tagName)) { const e = document.createElement(n.tagName === "STRONG" ? "B" : n.tagName === "EM" ? "I" : n.tagName); walk(n, e); dst.appendChild(e); }
+    else if (n.nodeType === 1 && !/^(SCRIPT|STYLE|META|LINK|IFRAME|OBJECT|TITLE)$/.test(n.tagName)) walk(n, dst);
+  });
+  walk(doc.body.firstChild, out);
+  return out.innerHTML;
+}
+// Screenshots are shrunk to at most 1800 px wide and stored as JPEG, so each day's file stays small.
+function shrinkImage(file) {
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { const k = Math.min(1, 1800 / img.width), c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85)); };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(new Error("Not an image")); };
+    img.src = url;
+  });
+}
+function insertAtCursor(node) {
+  const ed = $("editor"), sel = window.getSelection();
+  if (sel.rangeCount && ed.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+    const r = sel.getRangeAt(0), last = node.nodeType === 11 ? node.lastChild : node;
+    r.deleteContents(); r.insertNode(node);
+    if (last) { r.setStartAfter(last); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); }
+  } else ed.appendChild(node);
+}
+async function addImages(files) {
+  for (const f of files) { if (!/^image\//.test(f.type)) continue; const img = document.createElement("img"); img.src = await shrinkImage(f); insertAtCursor(img); }
+  markDirty();
+}
+function setSaveState(text, c) { const el = $("saveState"); el.textContent = text; el.className = "savestate " + (c || ""); }
+function markDirty() { noteDirty = true; leaveArmed = false; setSaveState("Not saved", "dirty"); }
+$("editor").addEventListener("input", markDirty);
+$("editor").addEventListener("paste", (e) => {
+  const items = [...((e.clipboardData && e.clipboardData.items) || [])], files = items.filter((i) => i.kind === "file").map((i) => i.getAsFile()).filter(Boolean);
+  e.preventDefault();
+  if (files.length) { addImages(files); return; }
+  const html = e.clipboardData.getData("text/html"), text = e.clipboardData.getData("text/plain");
+  if (html) { const t = document.createElement("template"); t.innerHTML = cleanHtml(html); insertAtCursor(t.content); }
+  else insertAtCursor(document.createTextNode(text));
+  markDirty();
+});
+$("editor").addEventListener("drop", (e) => { const f = [...((e.dataTransfer && e.dataTransfer.files) || [])]; if (f.length) { e.preventDefault(); addImages(f); } });
+$("imgPick").addEventListener("change", (e) => { addImages([...e.target.files]); e.target.value = ""; });
+$("saveBtn").addEventListener("click", async () => {
+  const b = $("saveBtn"); b.disabled = true; setSaveState("Saving…");
+  try { await saveNote(noteDay, cleanHtml($("editor").innerHTML)); noteDirty = false; setSaveState(`Saved ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`, "ok"); renderCal(); }
+  catch (err) { setSaveState("Not saved: " + err.message + ". Try again.", "err"); }
+  finally { b.disabled = false; }
+});
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && S.tab === "day") { e.preventDefault(); $("saveBtn").click(); } });
+window.addEventListener("beforeunload", (e) => { if (noteDirty) { e.preventDefault(); e.returnValue = ""; } });
+// Leaving with unsaved notes: the first click warns, a second click leaves.
+function leaveDayOk() {
+  if (!noteDirty || leaveArmed) { noteDirty = false; leaveArmed = false; return true; }
+  leaveArmed = true; setSaveState("Not saved. Click Save, or click again to leave without saving.", "err"); return false;
+}
+async function openDay(date) {
+  if (S.tab === "day" && noteDay && noteDay !== date && !leaveDayOk()) return;
+  noteDay = date; noteDirty = false; leaveArmed = false;
+  if (location.hash !== "#" + date) history.replaceState(null, "", "#" + date);
+  await setDay(date);
+  setTab("day");
+  $("dayTitle").textContent = parseDay(date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  $("editor").innerHTML = ""; setSaveState("Loading notes…");
+  try { $("editor").innerHTML = cleanHtml(await loadNote(date)); setSaveState(S.notes.has(date) ? "Saved" : "", S.notes.has(date) ? "ok" : ""); }
+  catch (err) { setSaveState("Could not load notes: " + err.message, "err"); }
+  window.scrollTo({ top: 0 });
+}
+function renderDayStats() {
+  const list = dayTrades(S.day), s = stats(list);
+  const tile = (label, value, c, hint) => `<div class="kpi"><div class="label">${label}</div><div class="value ${c}">${value}</div><div class="hint">${hint}</div></div>`;
+  $("dayStats").innerHTML = tile("Day P&amp;L", money(s.pnl), cls(s.pnl), `${s.n} trade${s.n === 1 ? "" : "s"}`) + tile("Results", `${s.w}W ${s.l}L`, "", `${s.be} break-even`) +
+    tile("Win rate", s.win === null ? "–" : s.win + "%", "", "current filters") + tile("Profit factor", s.pf === null ? "–" : s.pf.toFixed(2), s.pf === null ? "" : s.pf >= 1 ? "pos" : "neg", "current filters");
+  $("dayTradesSub").textContent = `${list.length} trade${list.length === 1 ? "" : "s"}`;
+  $("dayTrades").innerHTML = $("trades").innerHTML;
+}
+$("dayBack").addEventListener("click", () => { if (leaveDayOk()) setTab("dashboard"); });
+const stepDay = (dir) => { const x = parseDay(noteDay); x.setDate(x.getDate() + dir); openDay(ymd(x)); };
+$("dayPrev").addEventListener("click", () => stepDay(-1)); $("dayNext").addEventListener("click", () => stepDay(1));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (/^\d{4}-\d\d-\d\d$/.test(h) && h !== noteDay) openDay(h); });
+
 /* ---------- navigation ---------- */
 function render() {
   buildFilters();
   document.querySelectorAll("[data-daylabel]").forEach((n) => (n.textContent = S.day === today() ? "Today, " + fmtDay(S.day) : fmtDay(S.day)));
   renderKpis(); renderNow(); renderCurve(); renderCal(); renderByAcct(); renderTrades(); renderLogs(); renderAccounts();
+  if (S.tab === "day") renderDayStats();
   const up = S.accounts && S.accounts.updated && (!S.updated || S.accounts.updated > S.updated) ? S.accounts.updated : S.updated;
   $("updated").textContent = !LIVE ? "Sample data" : up ? `Updated ${up.slice(11, 16)}${up.slice(0, 10) === today() ? "" : " on " + fmtDay(up.slice(0, 10))}` : "No data yet";
   $("liveDot").classList.toggle("on", !!up && up.slice(0, 10) === today() && (Date.now() - new Date(up.replace(" ", "T")).getTime()) < 5 * 60000);
@@ -580,10 +759,11 @@ function render() {
 function setTab(tab) {
   S.tab = tab;
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
-  ["dashboard", "logs", "accounts"].forEach((t) => { const el = $("tab-" + t); el.hidden = t !== tab; el.style.display = t === tab ? "flex" : ""; });
+  ["dashboard", "logs", "accounts", "day"].forEach((t) => { const el = $("tab-" + t); el.hidden = t !== tab; el.style.display = t === tab ? "flex" : ""; });
+  if (tab !== "day" && /^#\d{4}-\d\d-\d\d$/.test(location.hash)) history.replaceState(null, "", location.pathname);
   render();
 }
-document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => { if (S.tab !== "day" || leaveDayOk()) setTab(b.dataset.tab); }));
 $("refreshBtn").addEventListener("click", async () => {
   const b = $("refreshBtn"); b.disabled = true; b.textContent = "Refreshing…";
   try { if (LIVE) await refresh(true); else render(); } finally { b.disabled = false; b.textContent = "Refresh"; }
@@ -623,8 +803,9 @@ async function start() {
   await Promise.all([loadIndex(), loadAccounts()]);
   if (!S.dates.has(S.day)) { const last = [...S.dates].sort().pop(); if (last && !LIVE) S.day = last; }
   S.month = S.day.slice(0, 7);
-  await Promise.all([loadDay(S.day), loadMonth(S.month), loadLogs(S.day), loadLogs(today())]);
+  await Promise.all([loadDay(S.day), loadMonth(S.month), loadLogs(S.day), loadLogs(today()), loadNoteIndex()]);
   render();
+  if (/^#\d{4}-\d\d-\d\d$/.test(location.hash)) openDay(location.hash.slice(1));
   setInterval(refresh, 10000);
 }
 

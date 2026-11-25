@@ -187,7 +187,6 @@ html.locked #gate { display: grid; place-items: center; min-height: 100vh; paddi
 
   <main class="wrap">
     <div class="sample" id="sampleNote" hidden>Sample data. This copy is not connected to NinjaTrader.</div>
-    <div class="sample" id="betaNote" hidden style="background:var(--accent-soft);color:var(--accent)">Trial version with day notes. The usual page is unchanged at <a href="../" style="color:inherit">trades/vimal</a>.</div>
 
     <!-- Dashboard -->
     <section id="tab-dashboard" style="display:flex;flex-direction:column;gap:16px">
@@ -800,7 +799,6 @@ async function start() {
   $("traderName").textContent = TRADER.charAt(0).toUpperCase() + TRADER.slice(1); $("mark").textContent = TRADER.charAt(0).toUpperCase();
   document.title = `${TRADER.charAt(0).toUpperCase() + TRADER.slice(1)} · Trade Journal`;
   $("sampleNote").hidden = LIVE;
-  $("betaNote").hidden = !(LIVE && segs[2] === "beta");
   if (LIVE) lastHead = await latestCommit();
   await Promise.all([loadIndex(), loadAccounts()]);
   if (!S.dates.has(S.day)) { const last = [...S.dates].sort().pop(); if (last && !LIVE) S.day = last; }
